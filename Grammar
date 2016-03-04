@@ -1,0 +1,93 @@
+# Grammar for Garter
+
+# Start symbols for the grammar:
+#       single_input is a single interactive statement;
+#       file_input is a program or sequence of commands
+#       read from an input file;
+
+# Start Symbols #
+single_input: (NEWLINE | simple_stmt |
+               compound_stmt NEWLINE |
+               defn NEWLINE)
+file_input: (NEWLINE | stmt)* ENDMARKER
+
+# Types #
+type: 'int' | 'float' | 'str' | 'bool' | NAME |
+      '{' type ':' type '}' | '[' type ']' |
+      (type | 'None') '(' [typelist] ')'
+typelist: type (',' type)* [',']
+
+# Statements #
+stmt: simple_stmt | compound_stmt | defn
+simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
+
+small_stmt: (expr | assign_stmt | pass_stmt |
+             break_stmt | continue_stmt |
+             return_stmt | print_stmt)
+assign_stmt: expr assignop expr
+assignop: ('=' | '+=' | '-=' | '*=' |
+           '/=' | '%=' | '**=' | '//=')
+pass_stmt: 'pass'
+break_stmt: 'break'
+continue_stmt: 'continue'
+return_stmt: 'return' [expr]
+print_stmt: ('print' '(' expr (',' expr)*
+             [',' 'end' '=' expr] [','] ')')
+
+compound_stmt: (if_stmt | while_stmt | for_stmt)
+if_stmt: ('if' expr ':' suite ('elif' expr ':' suite)*
+          ['else' ':' suite])
+while_stmt: 'while' expr ':' suite
+for_stmt: ('for' NAME 'in' (expr | range) ':' suite)
+range: 'range' '(' expr [',' expr [',' expr]] [','] ')'
+suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
+
+# Definitions #
+defn: funcdef | classdef | vardef
+
+# Variable Definition #
+vardef: NAME ':' [type] '=' expr
+
+# Function Definition #
+funcdef: ('def' NAME '(' [paramlist] ')' ['->' type] ':'
+          funcbody)
+paramlist: param (',' param)* [',']
+param: NAME ':' type
+
+funcbody: (simple_stmt | NEWLINE INDENT varfwd* stmt+ DEDENT)
+varfwd: globaldef | nonlocaldef
+globaldef: 'global' NAME (',' NAME)*
+nonlocaldef: 'nonlocal' NAME (',' NAME)*
+
+# Class Definition #
+classdef: 'class' NAME ':' class_body
+class_body: fielddef | NEWLINE INDENT class_stmt+ DEDENT
+class_stmt: fielddef | mthddef
+
+fielddef: NAME ':' [type] '=' expr
+mthddef: ('def' NAME '(' mparamlist ')' ['->' type] ':'
+          funcbody)
+mparamlist: NAME (',' param)* [',']
+
+# Expressions #
+expr: or_expr ['if' or_expr 'else' expr]
+or_expr: and_expr ('or' and_expr)*
+and_expr: not_expr ('and' not_expr)*
+not_expr: 'not' not_expr | comparison
+comparison: arith (comp_op arith)*
+comp_op: '<'|'>'|'=='|'>='|'<='|'!='|'in'|'not' 'in'
+arith: mult (('+'|'-') mult)*
+mult: unary (('*'|'/'|'%'|'//') unary)*
+unary: ('+'|'-') unary | power
+power: primary ['**' unary]
+primary: fieldref | subscription | call
+fieldref: primary '.' NAME
+subscription: primary '[' (expr | [expr] ':' [expr]) ']'
+call: primary '(' [exprlist] ')'
+atom: ('(' expr ')' |
+       '[' [exprlist] ']' |
+       '{' [dictmaker] '}' |
+       NAME | INTEGER | FLOATNUMBER | STRING+ |
+       'None' | 'True' | 'False')
+exprlist: expr (',' expr)* [',']
+dictmaker: expr ':' expr (',' expr ':' expr)* [',']

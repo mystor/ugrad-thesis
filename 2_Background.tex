@@ -1,69 +1,59 @@
 % Chapter 2
 \glsresetall % reset the glossary to expand acronyms again
-\chapter{Background}\label{ch:Background}
-Background
+\chapter{Background and Related Works}\label{ch:Background}
 
-% Sections
-\section{Examples}
-text
-\subsection{Sub Section}
-text
-\subsubsection{Sub Sub Section}
-text
+Garter aims to simplify and restrict the dynamic programming language Python
+inro a learning-friendly dialect. This is done by adding a type system, and
+restricting the types of programs which can be written to make writing code simpler.
 
-% Example Glossary
-\noindent \gls{AI}
+There are other projects which have aimed to add a type system to a dynamic
+language, with varying levels of success. 
 
-% Example Reference
-\noindent thanks to OpenCV\cite{opencv}
+The most similar project to this thesis, is the mypy project \cite{mypyweb}.
+Mypy is an optional static type checker for Python, which is designed to enable
+Python developers with large code bases to take advantage of static typing to
+make better, more maintainable software. The goal of mypy is to enable as many
+python structures and patterns to be described with its type system, which means
+that it possesses a relatively complex system, which includes bidirectional type
+inference, generics, function types, abstract base classes, multiple inheritance
+and more.
 
-% Example Figure
-% reference this figure in the text using \ref{fig.testPlot}
-\begin{figure}[!htbp]
-	\centering
-	\includegraphics[width = 5in]{figs/testPlot.png}
-	\caption{Test Plot}
-	\label{fig.testPlot}
-\end{figure}
+This thesis proposes a language which is much simpler and smaller than that
+provided by mypy. The reason for this is that the most important and useful part
+of a learning language is its error messages. As a type system gets more complex
+and tries to cover all types of software which a professional programmer would
+try to write, it can become unwieldy and produce unclear error messages. This
+thesis intentionally maintains a small type system footprint such that it can
+detect errors quickly, and provide useful errors, with suggestions for how the
+student can improve their software. Mypy also attempts to provide an easy
+migration path for developers with large existing python code bases: namely it
+is dynamic by default, and only becomes statically typed when type annotations
+are added. This is undesirable for a learning language, as we want the safer
+option to be the default option, otherwise students will accidentally write
+unsafe code, and not benefit from static typing and improved error detection.
 
-% Example Equation
-% I recommend using http://www.codecogs.com/latex/eqneditor.php to help make equations
-% for tough equations or until you're familiar with LaTeX
-% reference in the text using \ref{eqn.lowpassfilter}
-\begin{equation}
-	\mu_t = \alpha x + (1 - \alpha) \mu_{t-1}
-	\label{eqn.lowpassfilter}
-\end{equation}
+Another similar project is Microsoft's Typescript
+project \cite{typescriptpaper}, \cite{typescriptweb}. Much like mypy, Typescript
+aims to extend the ECMAScript language \cite{ecmascript} to have optional
+gradual typing. Many of the same complaints which apply to mypy also apply to
+Typescript: namely that it's goal is not teaching, and it ends up as a complex
+system in order to work for real production projects. By making covering all of
+the capabilities of dynamically typed languages a non-goal for this thesis, we
+hope to enable better error messages, and a simpler introduction to programming
+for students learning with it.
 
-% Example Nomenclature
-\nomenclature{$\mu$}{Average}
+The Turing programming language is a teaching programming language which
+heavily inspired Garter's type system and decisions \cite{turingpaper}. It has
+a simple nominal type system, and aims to provide good error messages. Turing is
+used throughout Ontario as a teaching language for new students in high school
+due to its simplicity. Unfortunately, Turing fails in a few areas. Firstly, its
+syntax no longer feels like the syntax of many modern programming languages.
+It's more low level than modern programming languages, not taking advantage of
+modern programming language features which are popular like Garbage Collection,
+and can help releive new developers from thinking of details, and it doesn't
+follow modern programming conventions of using growable arrays, maps, and
+the use of objects in order to encapsulate state.
 
-% Example Code Listing
-% reference in the text using \ref{ls.testPlot}
-\lstset{language=python}
-\lstset{tabsize=4}
-\lstset{commentstyle=\color{blue}}
-\lstset{frame=single}
-\lstset{label = ls.testPlot}
-\lstset{caption = Test Plot Code }
-\lstinputlisting[float=!htbp]{figs/testPlot.py}
-
-% Example Table
-% I recommend using http://truben.no/latex/table/ to help with making tables
-% reference in the text using \ref{tab.testTable}
-\begin{table}[!htbp]
-    \centering
-    \begin{tabular}{|l|l|l|} % options are l,c,r (left, center, right)
-    \hline
-    ~ & ~ & ~ \\
-    \hline
-    ~ & ~ & ~ \\
-    \hline
-    ~ & ~ & ~ \\
-    \hline
-    ~ & ~ & ~ \\
-    \hline
-    \end{tabular}
-    \caption{Test Table}
-    \label{tab.testTable}
-\end{table}
+Garter aims to take inspiration from Turing's simplicity, while extending on it
+with a modern programming lens in order to design a language which helps new
+programmers write good code, while also making them familiar with Python.

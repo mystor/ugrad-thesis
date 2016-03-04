@@ -3,7 +3,45 @@
 \chapter{Conclusions and Future Work}\label{ch:Conclusion}
 
 \section{Summary of Conclusions}
-Conclusions
 
-\section{Future Work}\label{sec:FutureWork}
-Future Work
+Garter is a new teaching programming language, based on the Python Programming
+Language. It provides the developer with a safe environment in which they can
+learn to write programs, while familiarising themselves with Python syntax and
+idioms, making the transition into real programming languages used in production
+around the world much easier.
+
+\section{Limitations and Future Work}\label{sec:FutureWork}
+
+Garter unfortunately currently has many limitations, mostly due to the short
+timeframe in which it was designed and implemented. We hope to shore up these
+problems in a future version of Garter.
+
+\begin{enumerate}
+\item Garter lacks a module system.
+
+Garter piggybacks on python, but doesn't currently support module loading,
+outside of a small pre-defined set of libraries, due to the complexity of
+figuring out
+
+\item Garter lacks a mechanism for exposing Python libraries to Garter code
+
+Occasionally a teacher may want to allow their students to perform actions which
+are not possible without interacting with other libraries written in Python,
+such as interacting with a graphics, windowing, high performance math,
+networking or similar library. Garter currently provides no mechanism for
+exposing that library other than modifying the distribution directly. Ideally a
+mechanism for doing this should be integrated into the language proper.
+
+\item Garter lacks a class inheritance structure
+
+To enter and participate in modern programming, you often need to learn the
+mechanics of OOP, specifically single-inheritance with interfaces. No mechanism
+was implemented for doing this in Garter (See \ref{sec:Classes}), which means
+that teaching of OOP concepts will have to occur in a different language.
+A future Garter may perform the design effort to add support for inheritance.
+
+% TODO: REference?
+
+\end{enumerate}
+
+

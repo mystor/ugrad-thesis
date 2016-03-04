@@ -4,13 +4,83 @@
 
 % Motivation
 \section{Motivation}
-Motivation
+
+Modern software development has moved toward the increased usage of dynamic
+programming languages. These languages do not contain a complete semantic
+analysis phase during compilation, and instead handle and report any type errors
+at run-time, as incorrect code is executed. This serves as an advantage for
+programmers due to the ability to easily write generic code (as all code is, by
+default, generic over all compatible types), as well as not have to design a
+complete data layout before beginning to write code. This allows for projects to
+be written quickly and easily. In program contexts where the optimizations only
+available to statically typed languages are not necessary, these can be
+significant benefits.
+
+Unfortunately, this dynamic execution doesn't only have run-time costs. It also
+affects the ease of understanding program errors, usually quite negatively. As
+an example, the same basic programming errors have been introduced into two
+programs: we will compare the error outputs of two similar incorrect problems,
+one written in Python, which is a dynamic language, and the other written in
+C \cite{ansic}, which is a static language. The python programs are executed
+with the cpython 2.7.10 \cite{cpython} interpreter, and the C programs are
+compiled using clang \cite{clangweb}, with the \code{-Werror} flag enabled.
+
+\begin{minipage}[t]{0.5\textwidth}
+\lstinputlisting[language=Python]{figs/python1.py}
+\end{minipage}
+\begin{minipage}[t]{0.5\textwidth}
+\lstinputlisting[language=C]{figs/c1.c}
+\end{minipage}
+
+When the python program on the left is run with cpython, the program begins
+executing and reaches line 5 before producing a run-time error: \code{NameError:
+name 'xx' is not defined}. In contrast, the C program fails to compile, emitting
+the compile-time error \code{error: use of undeclared identifier 'xx'}. If the
+python code was to refer to the incorrectly named code in an infrequent code
+path, the error could never be caught and reported, even with testing.
+
+\begin{minipage}[t]{0.5\textwidth}
+\lstinputlisting[language=Python]{figs/python2.py}
+\end{minipage}
+\begin{minipage}[t]{0.5\textwidth}
+\lstinputlisting[language=C]{figs/c2.c}
+\end{minipage}
+
+These programs, much like the earlier programs, also demonstrate a common error:
+passing values with incorrect types into a function. In the python code, the
+error is reported at run-time on line 3 - \emph{within} the function. This
+function could theoretically be located within a library which a developer is
+using, meaning that the error is reported at a code location which is unrelated
+to the actual programming error. In contrast, The strongly-typed C program
+reports the error on line 10, which is the call site where the actual mistake
+occurred.
 
 
 % Problem Overview
 \section{Problem Overview}
-Problem Overview
 
+The goal of this thesis was to design, implement, and demonstrate a new teaching
+programming language: Garter. Garter is intended to be a language which both
+makes teaching programming concepts to new developers easy, and also provides
+a smooth path for moving away from the learning environment to implementing and
+solving real problems. We consider such a language to have to fit the following
+requirements:
+
+\begin{enumerate}
+\item The programmer should not be required to use syntax or language features
+until they understand its meaning, yet should be able to start writing code
+before they have been taught about syntax.
+\item The language should act as a stepping stone to a production programming
+language, such that eager learners can use what they have learned in class to
+write more complex programs and springboard into learning a language which is
+used by professionals in both Scientific Programming and Application Programming.
+\item Confusing edge cases should be eliminated, such that students and teachers
+are able to safely reason about a program without having to spend time studying
+the language's particulars.
+\item The language should prevent incorrect programs from being written, and
+provide useful explanations as to how to correct the program being run, rather
+than breaking in a confusing manner at runtime.
+\end{enumerate}
 
 % Thesis Contributions
 \section{Thesis Contributions}
@@ -18,10 +88,15 @@ Problem Overview
 The main contributions of this thesis are as follows:
 
 \begin{itemize}
-\item{Contribution 1}
-\item{Contribution 2}
-\item{Contribution 3}
-\item{...}
+\item We designed a new teaching programming language, Garter, which aims to
+bring together the simplicity of other teaching programming languages, like
+Turing, and the more modern dynamic programming language Python.
+\item We created a prototype implementation of Garter, based on the cpython
+runtime, including using the cpython IDE, IDLE, and adapting it to work with
+Garter code.
+\item We implemented a series of example programs, in Garter, demonstrating
+that it can be used to solve simple problems like those solved in classrooms,
+and showing how to migrate Turing style programs to Garter.
 \end{itemize}
 
 
@@ -29,10 +104,10 @@ The main contributions of this thesis are as follows:
 \section{Thesis Outline}
 The remainder of this thesis is organized as follows:
 
-\noindent\textbf{Chapter 2, Background:} Background
+\noindent\textbf{Chapter 2, Background:} An exploration of the other languages and tooling which exist in this space
 
-\noindent\textbf{Chapter 3, Methods:} Methods
+\noindent\textbf{Chapter 3, Design:} A discussion of the design decisions made for the Garter language to make it fit the 4 requirements.
 
-\noindent\textbf{Chapter 4, Results:} Results
+\noindent\textbf{Chapter 4. Prototype Implementation:} An exploration of the prototype implementation of Garter
 
-\noindent\textbf{Chapter 5, Conclusions and Future Work:} Conclusions
+\noindent\textbf{Chapter 5, Conclusions and Future Work:} Where Garter has succeeded and failed, as well as the path foward to a better educational programming language

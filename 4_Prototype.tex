@@ -1,0 +1,40 @@
+% Chapter 3
+\glsresetall % reset the glossary to expand acronyms again
+\chapter{Prototype Implementation}\label{ch:Prototype}
+
+In order to validate the claims of simplicity and feasibility, a prototype implementation of the Garter language was devised.
+
+Many options were considered for how to implement this prototype, mostly focusing on compiling the resulting program back down to Python logic, while performing the validation.
+See appendix (Alternative Implementation Strategies)
+
+++ Program Structure
+
+Inserted a phase
+cpython (lexer) -> cpython (parser) -> garter (validator) -> cpython (compiler) -> cpython (interpereter) (DIAGRAM)
+
+The strategy which was selected was to modify the cpython interpereter, adding the extra syntax required by the Garter programming language to Python's AST (see language design # assignment for info on extra syntax).
+Validation pass was written. Takes python's pre-compilation AST and typechecks it. Written in python for ease of development (over C)
+
+New compiler entry point for python programs, like the built in compile function provided by Python itself. Has same functionality, but also performs typechecking
+
+Modify programs such as IDLE (the Python IDE) to instead use this compile function rather than the built-in one. Means that code run in IDLE is now valid Garter code.
+
+Also created command line REPL which uses this entry point - acts like the Python executable.
+
++++ Why not replace python completely
+
+Cannot completely replace the standard compile pathways with Garter ones - python code is used internally in python and would need to be re-written.
+
+++ REPL Support
+
+REPLs require maintaining scope and type information across compilations. This is done by exposing
+an opaque scope object to calling code of compile function. Can be passed to compile function on
+a future pass to make the logic run in the same scope as previous scope.
+
++++ Modifications to REPL mode
+
+Modifications needed to be made to the repl runners such as IDLE in order to ensure that if runtime error killed statement when it is being executed: changes to types in scope are not recorded.
+
+Otherwise, garter validator might think that x has been initialized, when it actually has not yet.
+
+

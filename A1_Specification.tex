@@ -1,0 +1,1045 @@
+% Chapter 4
+\glsresetall % reset the glossary to expand acronyms again
+\chapter{Specification}\label{ch:Specification}
+
+\newcommand{\bs}[0]{\textbackslash}
+
+\section{Lexical analysis}
+
+Garter's syntax and lexical analysis are derived from the syntax and lexical rules
+from Python. For that reason, many parts of this section are derived directly
+from the Python 3 Language Reference \cite{pythonweb}.
+
+Garter programs are described as a series of Unicode code points, and all lexical
+analysis is performed on the basis of these Unicode code points.
+
+\subsection{Logical and Physical Lines}
+
+A Garter program is formed of logical lines. The end of a logical line is
+represented by the \code{NEWLINE} token. A logical line is formed by one or more
+physical line, joined by explicit or implicit joins.
+
+A physical line is a sequence of unicode code points followed by a newline
+sequence. This sequence is any of \code{\bs r}, \code{\bs n}, or \code{\bs r\bs n} where \code{\bs r} represents the ASCII Carriage Return (CR) character, and \code{\bs n} represents the ASCII Linefeed (LF) character.
+
+\subsection{Line joining rules}
+
+If the last character in a physical line is the backslash character (\code{\bs}),
+and the character is not part of another token (such as a string token), the
+current physical line is joined with the next physical line, and no
+\code{NEWLINE} token is emitted. Lines which are explicitly joined this way may
+not carry comments
+
+If the end of a physical line is reached while inside a pair of parentheses
+(\code{()}), square brackets (\code{[]}), or curly braces (\code{\{\}}), the
+physical line is implicitly joined with the next line. Lines joined this way may
+carry comments.
+
+\subsection{Comments}
+
+A comment starts with the hash character (\code{\#}) which is not part of a
+string literal, and ends at the end of a physical line. Comments are ignored by
+syntax, and do not cause tokens to be emitted.
+
+\subsection{Indentation}
+
+Leading whitespace at the beginning of a logical line is used to determine the
+indentation level of the line, which is used for blocks in the Garter
+programming language.
+
+Whitespace measurements are done on spaces, with tabs being replaced by one to
+eight spaces, such that the total number of characters is a multiple of 8.
+
+The lexical analysis uses these indentation levels to produce \code{INDENT} and
+\code{DEDENT} tokens, using a stack. The following excerpt from the Python
+reference explains the algorithm used:
+
+Before the first line of the file is read, a single zero is pushed on the stack;
+this will never be popped off again.  The numbers pushed on the stack will
+always be strictly increasing from bottom to top.  At the beginning of each
+logical line, the line's indentation level is compared to the top of the stack.
+If it is equal, nothing happens. If it is larger, it is pushed on the stack, and
+one INDENT token is generated.  If it is smaller, it *must* be one of the
+numbers occurring on the stack; all numbers on the stack that are larger are
+popped off, and for each number popped off a DEDENT token is generated.  At the
+end of the file, a DEDENT token is generated for each number remaining on the
+stack that is larger than zero.
+
+\subsubsection{Whitespace}
+
+Whitespace between tokens is ignored, unless it contributes to the indentation
+rules explained above.
+
+\subsection{Identifiers}
+\label{sec:lex_identifiers}
+
+Garter identifiers may be of arbitrary length, and may be formed as follows:
+
+\begin{lstlisting}
+identifier ::= start continue*
+start      ::= <'a'-'z', 'A'-'Z', '_'>
+start      ::= <start, '0'-'9'>
+\end{lstlisting}
+
+Implementations may also support additional unicode characters from outside the
+ASCII range, following Unicode standard annex UAX-31, like Python.
+
+As an additional restriction, names beginning and ending with two ASCII
+underscores (\code{\_\_}), such as \code{\_\_ADD\_\_}, \code{\_\_init\_\_}) are
+reserved for implementation use, and may not be written in a Garter program.
+
+\subsubsection{Keywords}
+
+Keywords are a set of identifiers which cannot be used as ordinary identifiers.
+Unlike Identifiers, they do not produce a \code{NAME} token, but instead produce
+a token specific to the keyword. For any keyword \code{Foo}, the token generated
+will be written as \code{'Foo'} in this document.
+
+Some keywords in garter are included for compatibility with the Python
+programming language, while others are keywords used only within the Garter
+programming language.
+
+The following are the set of keywords in Garter:
+
+\begin{lstlisting}
+False      class      finally    is         return
+None       continue   for        lambda     try
+True       def        from       nonlocal   while
+and        del        global     not        with
+as         elif       if         or         yield
+assert     else       import     pass       print
+break      except     in         raise      range
+int        float      bool       str        len
+\end{lstlisting}
+
+\subsection{Literals}
+
+\subsubsection{String Literals}
+\label{sec:string_literals}
+
+String literals takes the following form
+\begin{lstlisting}
+stringliteral: (shortstring | longstring)
+shortstring: ("'" shortstringitem* "'" |
+              '"' shortstringitem* '"')
+longstring: ("'''" longstringitem* "'''" |
+             '"""' longstringitem* '"""')
+shortstringitem: shortstringchar | stringescapeseq
+longstringitem: longstringchar | stringescapeseq
+shortstringchar: <any source character except "\\"
+                  or newline or the quote>
+longstringchar: <any source character except "\\">
+bytesescapeseq: "\\" <any ASCII character>
+\end{lstlisting}
+
+Escape sequences in string and bytes literals are interpreted according to rules
+similar to those used by Standard C. The recognized escape sequences are:
+
+\begin{center}
+  \begin{tabular}{|l|l|}
+    \hline
+    Escape Sequence & Meaning\\ \hline
+    \code{\bs{}newline} & Backslash and newline ignored \\
+    \code{\bs\bs} & Backslash (\bs) \\
+    \code{\bs{}'} & Single quote (') \\
+    \code{\bs{}"} & Double quote (") \\
+    \code{\bs{}a} & ASCII Bell (BEL) \\
+    \code{\bs{}b} & ASCII Backspace (BS) \\
+    \code{\bs{}f} & ASCII Formfeed (FF) \\
+    \code{\bs{}n} & ASCII Linefeed (LF) \\
+    \code{\bs{}r} & ASCII Carriage Return (CR) \\
+    \code{\bs{}t} & ASCII Horizontal Tab (TAB) \\
+    \code{\bs{}v} & ASCII Vertical Tab (VT) \\
+    \code{\bs{}ooo} & Character with octal value ooo \\
+    \code{\bs{}xhh} & Character with hex value hh \\
+    \code{\bs{}N\{name\}} & Character named name in the Unicode database\\
+    \code{\bs{}uxxxx} & Character with 16-bit hex value xxxx\\
+    \code{\bs{}Uxxxxxxxx} & Character with 32-bit hex value xxxxxxxx \\ \hline
+  \end{tabular}
+\end{center}
+
+
+All unrecognized escape sequences are left in the string unchanged, including
+leaving the backslash in the result.
+
+Multiple consecutive string literals delimited by only whitespace are allowed,
+and will be concatenated into a single combined string literal. This allows
+writing, for example:
+
+\begin{lstlisting}[language=Python]
+x := ("string 1" "string 2")
+\end{lstlisting}
+
+Which assigns the value \code{"string 1string 2"} to x.
+
+\subsection{Integer Literals}
+
+The following is the lexical definition for integer literals:
+
+\begin{lstlisting}
+integer        ::=  decimalinteger | octinteger |
+                    hexinteger | bininteger
+decimalinteger ::=  nonzerodigit digit* | "0"+
+nonzerodigit   ::=  "1"..."9"
+digit          ::=  "0"..."9"
+octinteger     ::=  "0" ("o" | "O") octdigit+
+hexinteger     ::=  "0" ("x" | "X") hexdigit+
+bininteger     ::=  "0" ("b" | "B") bindigit+
+octdigit       ::=  "0"..."7"
+hexdigit       ::=  digit | "a"..."f" | "A"..."F"
+bindigit       ::=  "0" | "1"
+\end{lstlisting}
+
+Note that decimal integer literals may not have leading \code{0} characters.
+This is to cause c-style octal literals to be an error, as otherwise they would
+have unexpected behavior.
+
+\subsection{Floating Point Literals}
+
+Floating point literals expand on integer literals to allow the definition of
+non-integral numbers. The following is the lexical definition:
+
+\begin{lstlisting}
+floatnumber   ::=  pointfloat | exponentfloat
+pointfloat    ::=  [intpart] fraction | intpart "."
+exponentfloat ::=  (intpart | pointfloat) exponent
+intpart       ::=  digit+
+fraction      ::=  "." digit+
+exponent      ::=  ("e" | "E") ["+" | "-"] digit+
+\end{lstlisting}
+
+\subsection{Operators and Delimiters}
+
+The following are additional special operator and delimiter tokens used by Garter:
+
+\begin{lstlisting}
++       -       *       **      /       //      %
+<       >       <=      >=      ==      !=      +=
+-=      *=      /=      //=     %=      **=     -> 
+,       :       .       ;       =       (       )
+[       ]       {       }
+\end{lstlisting}
+
+\section{Data Model}
+
+Values in garter are objects. Objects have a type, which defines the type's
+fields, and what other operations which may be performed on it. Objects have
+identity, and are stored by reference in variables or fields. Assignment doesn't
+mutate the object inside of the variable/field, but instead replaces the
+reference. A variable or field is immutable if its value cannot be changed.
+
+
+\subsection{Type Subsumption}
+\label{subsumption}
+
+A type \code{T} can be said to subsume another type \code{Q} if a value of type
+\code{Q} can be used anywhere that a value of type \code{T} can be used. For
+example: an \code{int} is a more specific type than a \code{float}, and it would
+be legal to use a \code{int} anywhere that a \code{float} would be required.
+Thus we can say \code{float} subsumes \code{int}. In addition, we can say the
+inverse, that \code{int} is a subtype of \code{float}.
+
+\subsection{Types}
+
+\begin{lstlisting}
+type: 'int' | 'float' | 'str' | 'bool' | NAME |
+      '{' type ':' type '}' | '[' type ']' |
+      (type | 'None') '(' [typelist] ')'
+typelist: type (',' type)* [',']
+\end{lstlisting}
+
+\subsubsection{Numbers (\code{int} and \code{float})}
+
+\code{float} is an floating point number. An object of this type may asusme the
+value of a double precision floating point value. \code{float} exposes no
+attributes. \code{float} is ordered, and can be compared with the comparison
+operators \code{<}, \code{>}, \code{<=} and \code{>=}.
+
+\code{int} is an integer. An object of this type may assume the value of an
+arbitrary integer value. \code{int} exposes no attributes. \code{int} is a
+subtype of \code{float}. \code{int} is ordered, and can be compared with the
+comparison operators \code{<}, \code{>}, \code{<=} and \code{>=}.
+
+
+\subsubsection{Strings (\code{str})}
+
+\code{str} is a unicode string. It may assume the value of an arbitrary length
+sequence of unicode codepoints. \code{str} is ordered, and can be compared with
+the comparison operators \code{<}, \code{>}, \code{<=} and \code{>=}. \code{str}
+exposes the following attributes:
+
+\code{join : str([str])}: The \code{join} attribute is a function object which
+concatenates the elements of the argument array, using the implicit self
+argument as the seperator. The \code{join} attribute is immutable.
+
+\subsubsection{Booleans (\code{bool})}
+
+\code{bool} is a boolean. It may assume either the value \code{True} or
+\code{False}. \code{bool} exposes no attributes.
+
+\subsubsection{Dictionaries (\code{\{K: V\}})}
+
+\code{\{K: V\}} is a one-to-many map from values of type \code{K} to values of
+type \code{V}. \code{K} and \code{V} may be arbitrary types. \code{\{K: V\}}
+exposes the following attributes. All attributes of \code{\{K: V\}} are
+immutable:
+
+\code{pop : V(K, V)}: If the first parameter is a key in the map, Mutates the
+map, removing the key from the mapping, and returns the associated value.
+Otherwise, returns the second parameter.
+
+\code{setdefault : V(K, V)}: If the first parmaeter is a key in the map, returns
+its associated value. Otherwise, mutates the map, inserting tke key-value pair
+of the parameters to the map, and returns the second parameter.
+
+\code{get : V(K, V)}: If the first parameter is a key in the map, returns the
+associated value. Otherwise, returns the second parameter.
+
+\code{clear : None()}: Mutates the map, removing all key-value pairs.
+
+\code{copy : \{K: V\}()}: Returns a new \code{\{K: V\}}, with a shallow copy
+of the key-value pairs from the map.
+
+\code{update : None(\{K: V\})}: Mutates the map, adding all key-value pairs from
+the first parameter, overriding any existing conflicting key-value pairs.
+
+\subsubsection{Lists (\code{[T]})}
+
+\code{[T]} is a list of values of type \code{T}. An object of this type may
+assume the value of an arbitrary length list of values of type \code{T}.
+\code{[T]} exposes the following attributes. All attributes of \code{[T]} are
+immutable:
+
+\code{append : None(T)}: Mutates the list, adding the first parameter to the end
+of the list.
+
+\code{extend : None([T])}: Mutates the list, adding the elements of the first
+parameter to the end of the list.
+
+\code{insert : None(int, T)}: Mutates the list, adding the second parameter
+at the index specified by the first parameter, shifting all elements after
+the insertion point one element.
+
+\code{remove : None(T)}: Mutates the list, removing the first element for which
+\code{it == arg} (where \code{it} is the element, and \code{arg} is the
+argument) evaluates to \code{True}.
+
+\code{pop : T(int)}: Mutates the list, removing the element at the index
+specified by the first parameter, and returning it. Elements with indexes
+greater than the first parameter are shifted down one index.
+
+\code{index : int(T)}: Returns the index of the first element in the list for
+which \code{it == arg} (where \code{it} is the element, and \code{arg} is the
+argument) evalues to \code{True}.
+
+\code{count : int(T)}: Returns the number of elements in the list for which
+\code{it == arg} (where \code{it} is the element, and \code{arg} is the
+argument) evaluates to \code{True}.
+
+\code{reverse : None()}: Mutates the list, reversing the order of its elements.
+
+\code{sort : None()}: Mutates the list, sorting it in ascending order. This
+attribute is only avaliable on the list types \code{[int]}, \code{[float]}, and
+\code{[str]}.
+
+\subsubsection{Functions (\code{T(P, ...)})}
+
+Function objects may have a return type (\code{T}), or if \code{None} is written
+instead of a type, the function returns no value. In addition, they have an
+arbitrary-length list of parameter types. Function objects do not expose any
+attributes.
+
+\subsubsection{User-defined Types}
+
+Users may define their own types using the \code{class} statement (Section
+\ref{sec:classdef}). These classes have the attributes as defined by their class
+definition. They are unordered, and can be compared for identity with the
+equality (\code{==} and \code{!=}) operator.
+
+For more details on user-defined types, see Section \ref{sec:classdef}.
+
+\subsection{Unwritable Types}
+\label{writable_types}
+
+A type is said to be an unwritable type if it cannot be written using the type
+syntax. Values with unwritable types may not be assigned to variables or used as
+the type of fields, parameters, or return values. These types may only be used
+as the type of a temporary value within an expression. Unwritable types are the types
+of expressions such as \code{None}, \code{[]} and \code{\{\}}.
+
+The expression \code{None} has the unwritable type \code{\_\_NoneType\_\_}. This
+type is subsumed by all class types. Thus, the \code{None} value can be used in
+place of any class type due to subsumption rules (Section \ref{subsumption}).
+
+The expression \code{[]} has the unwritable type \code{\_\_EmptyListType\_\_}.
+This type is subsumed by all list types. Thus, the \code{[]} value can be used
+in place of any list type due to subsumption rules (Section \ref{subsumption}).
+\code{\_\_EmptyListType\_\_} exposes the same methods as a normal list, except
+for those which require knowing the element type.
+
+The expression \code{\{\}} has the unwritable type \code{\_\_EmptyDictType\_\_}.
+This type is subsumed by all dict types. Thus, the \code{\{\}} value can be used
+in place of any dict type due to subsumption rules (Section \ref{subsumption}).
+\code{\_\_EmptyDictType\_\_} exposes the same methods as a normal dict, except
+for those which require knowing the key/value types.
+
+All compound list or dictionary types which have keys, values, or item types which
+are unwritable are also unwritable. They can be subsumed by any type for which
+all literal types match, and the unwritable keys, values, and/or items are subsumed
+by the corresponding keys, values, and/or items in the subsuming type.
+
+\section{Program Start Points}
+
+\begin{lstlisting}
+single_input: (NEWLINE | simple_stmt |
+               compound_stmt NEWLINE |
+               defn NEWLINE)
+file_input: (NEWLINE | stmt)* ENDMARKER
+\end{lstlisting}
+
+A Garter input may either consist of a self-contained program, consisting of a
+series of newlines and statements; or a single line of interactive
+input coming from, for example, a REPL.
+
+\section{Definitions and Scoping}
+\label{sec:defs_and_scoping}
+
+\begin{lstlisting}
+defn: funcdef | classdef | vardef
+\end{lstlisting}
+
+Definitions may occur wherever a statement is permitted. They bind a value to
+the given name in the current scope. Binding is performed on a per-block level.
+Shadowing of variables from outside of the current function is permitted, but
+shadowing within a function is not allowed. Redeclarations are also prohibited.
+
+When referring to a name, first a check is made to see if the variable is local.
+A variable is local if there is a statement declaring that variable within the
+current function (whether that variable is currently in scope is ignored). If
+the name is nonlocal, enclosing scopes are checked for local variables. If a
+variable with the name is not found, it is a validation time error. Once a
+variable is found, the variable's validity is checked. A local variable is valid
+if it has been declared within the current block or a direct parent. A nonlocal
+variable is valid if it is declared above the enclosing function definition in
+the root of a function or module. Other references are prohibited as they may no
+longer be valid when the function is called.
+
+Variables may not be mutated if they are defined using an immutable declaration
+form. Nonlocal variables may not be mutated, although this may be bypassed with
+the \code{varfwd} forms described in Section \ref{sec:funcdef}.
+
+\subsection{Function Definition}
+\label{sec:funcdef}
+
+\begin{lstlisting}
+funcdef: ('def' NAME '(' [paramlist] ')' ['->' type] ':'
+          funcbody)
+paramlist: param (',' param)* [',']
+param: NAME ':' type
+
+funcbody: (simple_stmt | NEWLINE INDENT varfwd* stmt+ DEDENT)
+varfwd: globaldef | nonlocaldef
+globaldef: 'global' NAME (',' NAME)*
+nonlocaldef: 'nonlocal' NAME (',' NAME)*
+\end{lstlisting}
+
+A function definition defines a new immutable variable with the given name. It has
+the type of the corresponding function object, with the return type specified
+after the \code{->} token, or None if no return type is specified. The parameter
+types are defined as the types written after the \code{:} token in each parameter.
+
+For example, the function definition:
+
+\begin{lstlisting}
+def foo(a: int, b: float, c: str) -> bool:
+    ....
+\end{lstlisting}
+
+Would define ani immutable variable of type \code{bool(int, float, str)}.
+
+When the function is invoked, the statements in the body of the function are executed
+sequentially.
+
+The variable forward forms, \code{globaldef} and \code{nonlocaldef} accept names as
+arguments. They state that for name resolution rules, the global, or nonlocal (but in
+another function) variables should be treated as though they are local. This means that
+they may be mutated, even though they exist in an enclosing nonlocal scope.
+
+Calls to functions are described in more detail in Section \ref{sec:call}.
+
+The body of the function is not validated until either the end of the current
+input's validation phase, (either an interactive command or program file), or
+the validation of its first reference to the variable within the current input.
+This means that functions may refer to other functions or variables which have
+not been declared yet, as long as they are declared before the function is used.
+
+\subsection{Class Definition}
+\label{sec:classdef}
+
+\begin{lstlisting}
+classdef: 'class' NAME ':' class_body
+class_body: fielddef | NEWLINE INDENT class_stmt+ DEDENT
+class_stmt: fielddef | mthddef
+
+fielddef: NAME ':' [type] '=' expr
+mthddef: ('def' NAME '(' mparamlist ')' ['->' type] ':'
+          funcbody)
+mparamlist: NAME (',' param)* [',']
+\end{lstlisting}
+
+A class definition defines a new type to the Garter type system. User-defined
+classes may not be referred to in a Garter program before their definition.
+
+When the garter class definition for a type \code{T} is written, an immutable
+variable of type \code{T()} is defined with the name \code{T}. This function can
+be called to get a new instance of the type \code{T}. In addition, the
+initializer statements for the class are run when a class definition is executed
+as a statement.
+
+If a class is declared within a function, each time that function is run the
+initializer statements for the class will be re-run, and will be used for
+new instances of that class within the given scope.
+
+All field and method definitions declare attributes on the class type.
+
+All class types also accept, as a possible value, the value \code{None}. This
+represents the absense of a meaningful value. Any attempt to access a field on a
+\code{None} value results in a runtime error.
+
+\subsubsection{Field Definitions}
+\label{sec:fielddef}
+A field definition defines a new mutable attribute with the written type on the
+class type. For example, the field definition \code{x : int = 10} would define a
+mutable attribute \code{x} on the class type, with type \code{int}. Like with
+variable declarations, the type of the field may be inferred if the type is not
+written.
+
+\subsubsection{Method Definitions}
+\label{sec:methoddef}
+A method definition defines a new mutable attribute with a function type on the
+class type. The function type will be the same as if the method definition was
+written as a function definition (Section \ref{sec:funcdef}), except that the
+first parameter need not be typed, and will be implicitly passed a reference to
+the instance of the class the function is called on.
+
+Calls are described in more detail in Section \ref{sec:call}.
+
+\subsubsection{Variable Definition}
+\label{sec:vardef}
+
+\begin{lstlisting}
+vardef: NAME ':' [type] '=' expr
+\end{lstlisting}
+
+A variable definition defines a new mutable variable in the current scope. If
+the statement is invoked at the global scope, then it defines a new variable in
+the global scope. If the statement is invoked within the root of a function, it
+defines a new variable inside of that function's scope. The expression is then
+evaluated, and assigned to that variable.
+
+If the type is not provided, it is inferred from the type of the expression. This is
+occasionally not possible, and a type annotation must be provided (such as with the
+\code{None} literal).
+
+\section{Statements}
+
+\begin{lstlisting}
+stmt: simple_stmt | compound_stmt | defn
+simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
+\end{lstlisting}
+
+Control flow in Garter is controlled by statements. These statements can be
+categorized into two groups: the single-line small statements, and the
+multi-line compound statements.
+
+Definitions are also statements, but are described in Section
+\ref{sec:defs_and_scoping}.
+
+\subsection{Small Statements}
+
+\begin{lstlisting}
+small_stmt: (expr | assign_stmt | pass_stmt |
+             break_stmt | continue_stmt |
+             return_stmt | print_stmt)
+\end{lstlisting}
+
+\subsubsection{Expr Statement}
+
+The expr statement allows for an expression to be invoked for its side effects,
+discarding the resulting value. Usually this is done with a function or method
+call. More details on expressions in Section \ref{sec:expr}.
+
+\subsubsection{Assignment Statement}
+
+The basic assignment operator \code{lhs = rhs} assigns the value in \code{rhs}
+to \code{lhs}.
+
+Compound assignment operators, \code{+= -= *= /= \%= **= //=} perform their
+operation (\code{+ - * / \% ** //} respectively), and the assign the result to
+\code{lhs}, evaluating \code{lhs} only once.
+
+The \code{lhs} of the operator must be an assignable target. This is either a
+mutable variable, field, array or dictionary index, or array slice. Other
+expressions are not legal on the left of an assignment operator. If a field or
+variable is immutable (such as is the case with fields corresponding to methods,
+and variables corresponding to functions and classes), then it is not a legal
+assignable target. If a variable is nonlocal, it is also not a legal assignment
+target. To bypass this, the \code{nonlocal} and \code{global} forms may be used
+(Section \ref{sec:funcdef}).
+
+\subsubsection{Pass Statement}
+
+\begin{lstlisting}
+pass_stmt: 'pass'
+\end{lstlisting}
+
+The pass statement does nothing. It exists to enable the definition of empty
+blocks.
+
+\subsubsection{Break Statement}
+\label{sec:break_stmt}
+
+\begin{lstlisting}
+break_stmt: 'break'
+\end{lstlisting}
+
+The break statement may only be placed lexically within the for or while
+statements. It causes control flow to immediately continue to the next statement
+after the for or while statement, not executing the remainder of the current
+iteration, and ignoring the normal loop exit conditions.
+
+\subsubsection{Continue Statement}
+\label{sec:continue_stmt}
+
+\begin{lstlisting}
+continue_stmt: 'continue'
+\end{lstlisting}
+
+The continue statement may only be placed lexically within the for or while
+statements. It causes control flow to immediately continue to the next iteration
+of the loop, not executing the remainder of the current iteration.
+
+\subsubsection{Return Statement}
+
+\begin{lstlisting}
+return_stmt: 'return' [expr]
+\end{lstlisting}
+
+The return statement may only be placed lexically within a function declaration.
+It causes control flow to immediately exit the current function, not executing
+the remaining statements in the function. If the return statement is passed an
+expression, then it must have the same type as the return type of the function,
+and that value is used as the return value of the function. If the return
+statement is not passed an expression, then the function must not have a return
+type.
+
+\subsubsection{Print Statement}
+
+\begin{lstlisting}
+print_stmt: ('print' '(' expr (',' expr)*
+             [',' 'end' '=' expr] [','] ')')
+\end{lstlisting}
+
+Prints out the result of casting each of the arguments to a \code{str} to the
+screen. If this operation would fail, instead prints out a useful debug
+representation of the object. By default, each argument's representation is
+seperated by an ASCII space character (\code{' '}), and the print statement's
+output is terminated with an ASCII newline character (\code{'\bs{}n'}). This
+newline character can be replaced by passing the \code{end} 'named argument',
+which will instead terminate the string. The \code{end} named argument must be a
+\code{str}.
+
+\subsection{Compound Statements}
+
+\begin{lstlisting}
+compound_stmt: (if_stmt | while_stmt | for_stmt)
+\end{lstlisting}
+
+\subsubsection{If Statement}
+\begin{lstlisting}
+if_stmt: ('if' expr ':' suite ('elif' expr ':' suite)*
+          ['else' ':' suite])
+\end{lstlisting}
+
+The if statement is used for conditional execution. It selects exactly one of
+the suites to execute by evaluating the expressions one by one until one is
+found to evaluate to the boolean value \code{True}. If all expressions evaluate
+to \code{False}, then the suite of the else clause, if present, is executed.
+
+All of the expression arguments must be of type \code{bool}.
+
+\subsubsection{While Statement}
+\begin{lstlisting}
+while_stmt: 'while' expr ':' suite
+\end{lstlisting}
+
+The \code{while} statement is used for repeated execution while an expression evaluates
+to \code{True}. It will repeatedly test the expression, and if it is
+\code{True}, executes the suite. Whenever the expression evaluates to
+\code{False}, the loop terminates.
+
+A \code{break} statement (Section \ref{sec:break_stmt}) executed in the suite
+terminates the loop immediately. A \code{continue} statement (Section
+\ref{sec:continue_stmt}) executed in the suite skips the rest of the suite and
+goes back to testing the expression.
+
+
+\subsubsection{For Statement}
+\begin{lstlisting}
+for_stmt: ('for' NAME 'in' (expr | range) ':' suite)
+range: 'range' '(' expr [',' expr [',' expr]] [','] ')'
+\end{lstlisting}
+
+The \code{for} statement is used to iterate over the elements of a list. The
+expression is evaluated once, and must have a \code{[T]} type. The suite is then
+executed once for each element of the iterator, with the value bound to the
+name. This name binding is a local declaration, much like an the assignment
+declaration, however it is not valid outside of the body of the for statement
+(Section \ref{sec:vardef}.
+
+If the \code{range} form is used instead of the expression, then all of the
+expressions must have type \code{int}. In the 1 argument case, the suite is
+executed $N$ times, where $N$ is the first argument, with the name bound to each
+integer in the range $[0, N)$. In the 2 argument case, the suite is executed
+$M-N$ times, where $N$ is the first argument, and $M$ is the second argument,
+with the name bound to each integer in the range $[N, M)$. In the 3 argument
+case, it acts much like the 2 argument case, except the step is $I$ instead of
+1, where $I$ is the 3rd argument.
+
+A \code{break} statement (Section \ref{sec:break_stmt}) executed in the suite
+terminates the loop immediately. A \code{continue} statement (Section
+\ref{sec:continue_stmt}) executed in the suite skips the rest of the suite and
+proceeds to the next item in the list.
+
+
+\section{Expressions}
+\label{sec:expr}
+
+\subsection{Atoms}
+
+\begin{lstlisting}
+atom: ('(' expr ')' |
+       '[' [exprlist] ']' |
+       '{' [dictmaker] '}' |
+       'len' '(' expr ')' |
+       ('str' | 'int' | 'float') '(' expr ')' |
+       NAME | INTEGER | FLOATNUMBER | STRING+ |
+       'None' | 'True' | 'False')
+exprlist: expr (',' expr)* [',']
+dictmaker: expr ':' expr (',' expr ':' expr)* [',']
+\end{lstlisting}
+
+Atoms are the building blocks of expressions, and are the base cases for the
+recursive definitions of the other expressions.
+
+\subsubsection{Identifiers (names)}
+See Section \ref{sec:lex_identifiers} for lexical information on identifiers.
+This identifier evaluates to the value of the variable with the given name
+in the current scope. The type of this expression is the type of the variable
+with the given name.
+
+If there is no variable in the current scope with the given name, it is a
+validation-time error.
+
+\subsubsection{Literals}
+Literals evaluate to a literal of the given type. The \code{STRING} literal
+evaluates to a \code{str} object, The \code{INTEGER} literal evaluates to a
+\code{int} object, the \code{FLOAT} literal evaluates to a \code{float}
+object, the \code{'True'} literal evaluates to the \code{bool} value
+\code{True}, and the \code{'False'} literal evaluates to the \code{bool}
+value \code{False}.
+
+The \code{'None'} literal evaluates to the common \code{None} value of
+user-defined types. For more information see Section \ref{sec:classdef}.
+
+\subsubsection{Parenthesized Expression}
+Parenthesized Expressions evaluate to the value of the contained expression, and
+primarially exist as a mechanism for expression precidence and operation orders.
+
+\subsubsection{List literals}
+
+\begin{lstlisting}
+list_literal: '[' [exprlist] ']'
+exprlist: expr (',' expr)* [',']
+\end{lstlisting}
+
+List literals evaluate their contained expressions in order. All expressions
+must be of a single type \code{T}. They evaluate to a \code{[T]} value with the
+results of the contained expressions as the list elements.
+
+\subsubsection{Dictionary literals}
+
+\begin{lstlisting}
+dict_literal: '{' [dictmaker] '}'
+dictmaker: expr ':' expr (',' expr ':' expr)* [',']
+\end{lstlisting}
+
+Dictionary literals evaluate their contained expressions in order. All
+expressions to the left of the colon must be of a single type \code{K}, while
+expressions to the right of the colon must be of a single type \code{V}. They
+evaluate to a \code{\{K:V\}} value with the results of the expressions to the
+left of the ':' as the keys, and the ones to the right as values. Duplicate keys
+produce a runtime error.
+
+\subsubsection{Len Expression}
+
+\begin{lstlisting}
+len: 'len' '(' expr ')'
+\end{lstlisting}
+
+If the expr is a \code{str}, produces the length of the string as an \code{int}.
+If the expr is an \code{[T]}, produces the number of items in the list. If the
+expr is an \code{\{K: V\}}, produces the number of key-value pairs in the
+dictionary. Otherwise, causes a validation time error.
+
+\subsubsection{Typecast Expressions}
+
+\begin{lstlisting}
+typecast: ('int' | 'str' | 'float') '(' expr ')'
+\end{lstlisting}
+
+The typecast expressions attempt to convert their argument to their type.
+
+All typecast expressions only accept \code{int}, \code{float}, and \code{str}
+arguments.
+
+The \code{str} typecast will convert \code{int} and \code{float} objects to
+their \code{str} representation. For example, the \code{int} \code{5} will be
+converted to the \code{str} \code{"5"}. It will return \code{str} arguments
+unchanged.
+
+The \code{int} typecast will truncate \code{float} types to their closest
+integer representation, rounded toward \code{0}. It will also attempt to parse
+\code{str} types as an \code{int}, causing a runtime error if this fails. It will
+return \code{int} arguments unchanged.
+
+The \code{float} typecast will truncate \code{int} types to their closest
+floating point representation, which may be less precise than the \code{int}'s
+original representation. It will also attempt to parse \code{str} types as an
+\code{float}, causing a runtime error if this fails. It will return \code{float}
+arguments unchanged.
+
+\subsection{Primaries}
+\begin{lstlisting}
+primary: fieldref | subscription | call
+\end{lstlisting}
+
+\subsubsection{Field Reference}
+\label{sec:fieldref}
+
+\begin{lstlisting}
+fieldref: primary '.' NAME
+\end{lstlisting}
+
+A field reference accesses an attribute of the given object. The type of this
+expression is the type of the attribute on the object. If the object lacks
+an attribute with the given name, it is a validation-time error.
+
+\subsubsection{Call}
+\label{sec:call}
+\begin{lstlisting}
+call: primary '(' [exprlist] ')'
+\end{lstlisting}
+
+A call calls the function object with the passed arguments. The primary must
+evaluate to a function object, and the passed arguments must have types which
+correspond to the argument types of the function object.
+
+The result type is the return type of the function object. If the function
+object has no return type, then this expression has no result.
+
+This is also used to call methods, as methods are defined as immutable fields
+with a function object type.
+
+\subsubsection{Subscription}
+\begin{lstlisting}
+subscription: primary '[' (expr | [expr] ':' [expr]) ']'
+\end{lstlisting}
+
+If the first form of subscription is used, the primary must evaluate to a
+\code{[T]} or \code{\{K:V\}}. If the primary is a \code{[T]}, then the expr must
+be a \code{int}, and the expression will yield the nth element of the list,
+where n is the value of the expr. If the primary is a \code{\{K:V\}}, then the
+expr must be a \code{K}, and the expression will yield the \code{V} which is
+associated with the given key.
+
+If the second form of subscription is used, then the primary must evaluate to a
+\code{[T]}, and both expressions, if provided, must be a \code{int}. The first
+argument defaults to \code{0}, and the second defaults to the value of
+\code{len(primary)}. The expression yields a new list, containing the values in
+the list starting at the index of the first argument, and ending before the
+element at the index of the second argument.
+
+Negative integer indexes on \code{[T]} are offset from the end of the list, so
+\code{-1} is the index of the last element in the list.
+
+\subsection{Comparison Operators}
+\begin{lstlisting}
+comparison: arith (comp_op arith)*
+comp_op: '<'|'>'|'=='|'>='|'<='|'!='|'in'|'not' 'in'
+\end{lstlisting}
+
+These operators are not parsed as left-associative, unlike the Arithmetic
+Operators below. Instead, a sequence of comparison operators such as \code{a < b
+  == c > d} will be resolved like \code{(a < b) and (b == c) and (c > d)},
+except that each expression will only be evaluated once.
+
+These operators all produce an expression of type \code{bool}, and will be
+written with only two operands. Their semantic meaning in sequence is as is
+written above. Their valid types will be written in place of their operands. As
+\code{int} is subsumed by \code{float}, it may be used whenever a \code{float}
+is required.
+
+\code{float < float}: \code{True} if $lhs < rhs$, \code{False} otherwise.
+
+\code{float > float}: \code{True} if $lhs > rhs$, \code{False} otherwise.
+
+\code{float <= float}: \code{True} if $lhs \le rhs$, \code{False} otherwise.
+
+\code{float >= float}: \code{True} if $lhs \ge rhs$, \code{False} otherwise.
+
+\code{float == float}: \code{True} if $lhs = rhs$, \code{False} otherwise.
+
+\code{str == str}: \code{True} if $lhs$ and $rhs$ represent the same unicode
+sequence, \code{False} otherwise.
+
+\code{bool == bool}: \code{True} if $lhs$ and $rhs$ have the same value,
+\code{False} otherwise.
+
+\code{[T] == [T]}: \code{True} if $lhs$ and $rhs$ have the same number of
+elements, and for all elements $i$, \code{lhs[i] == rhs[i]}.
+
+\code{\{K: V\} == \{K: V\}}: \code{True} if $lhs$ and $rhs$ have the same set of
+keys, and for each key $k$, \code{lhs[k] == rhs[k]}.
+
+\code{T == T}: \code{True} if $lhs$ and $rhs$ have the same identity.
+
+\code{T != T}: \code{True} if \code{T == T} is \code{False}, \code{False}
+otherwise.
+
+\code{T in [T]}: \code{True} if there is an element $i$ in $rhs$ such that
+\code{lhs == rhs[i]}. \code{False} otherwise.
+
+\code{K in \{K: V\}}: \code{True} if the key $lhs$ is in $rhs$, \code{False}
+otherwise.
+
+\code{T not in [T]}: \code{False} if there is an element $i$ in $rhs$ such that
+\code{lhs == rhs[i]}. \code{True} otherwise.
+
+\code{K not in \{K: V\}}: \code{False} if the key $lhs$ is in $rhs$, \code{True}
+otherwise.
+
+\subsection{Arithmetic Operators}
+\begin{lstlisting}
+arith: mult (('+'|'-') mult)*
+mult: unary (('*'|'/'|'%'|'//') unary)*
+unary: ('+'|'-') unary | power
+power: primary ['**' unary]
+\end{lstlisting}
+
+These operators will be written with their valid types in place of their
+operands. Any unlisted type-operand combinations are validation-time errors.
+With any operators which accept \code{float} also accept \code{int} in place of
+their operands, unless a more specialized operator is avaliable. For example
+the \code{-} binary operator accepts any combination of \code{int} and
+\code{float} operators, and produces an \code{int} if both operands are
+\code{int}, and a \code{float} otherwise, but only has two entries on this list,
+one for \code{int - int}, and one for \code{float - float}.
+
+\code{int + int}: Returns the value $lhs + rhs$ as an \code{int}.
+
+\code{float + float}: Returns the value $lhs + rhs$ as a \code{float}.
+
+\code{str + str}: Returns a \code{str} containing the concatenation of the two strings.
+
+\code{[T] + [T]}: Returns a new \code{[T]} containing the concatenation of the two lists.
+
+\code{int - int}: Returns the value $lhs - rhs$ as an \code{int}.
+
+\code{float - float}: Returns the value $lhs - rhs$ as a \code{float}.
+
+\code{int * int}: Returns the value $lhs \times rhs$ as an \code{int}.
+
+\code{float * float}: Returns the value $lhs \times rhs$ as a \code{float}.
+
+\code{float / float}: Returns the value $\frac{lhs}{rhs}$ as a \code{float}.
+
+\code{int \% int}: Returns the remainder from the division $\frac{lhs}{rhs}$ as
+an \code{int}. The sign of this remainder will match the sign of the second
+operand.
+
+\code{float \% float}: Returns the remainder from the division $\frac{lhs}{rhs}$
+as an \code{float}. The sign of this remainder will match the sign of the second
+operand.
+
+\code{int // int}: Returns the value $\frac{lhs}{rhs}$, rounded down to the
+nearest integer as an \code{int}.
+
+\code{float // float}: Returns the value $\frac{lhs}{rhs}$, rounded down to the
+nearest integer as an \code{float}.
+
+\code{float ** float}: Returns the value $lhs^{rhs}$, as a \code{float}.
+
+\code{+ int}: Returns its operand unchanged.
+
+\code{+ float}: Returns its operand unchanged.
+
+\code{- int}: Returns the negation of its operand.
+
+\code{- float}: Returns the negation of its operand.
+
+\subsubsection{Unary Operators}
+
+\code{+}: If the operand is \code{int} or \code{float}, returns it unmodified.
+Other operand types cause a validation time error.
+
+\code{-}: If the operand is \code{int} or \code{float}, returns its negation with
+the same type. Other operand types cause a validation time error.
+
+\subsection{Boolean Operators}
+
+\begin{lstlisting}
+or_expr: and_expr ('or' and_expr)*
+and_expr: not_expr ('and' not_expr)*
+not_expr: 'not' not_expr | comparison
+\end{lstlisting}
+
+Boolean Operators, unlike the other operators, do not necessarially evaluate
+all of their operands, they may short-circuit their execution if the value of
+their left operand is sufficient to compute the result.
+
+All Boolean operators require all operands to have type \code{bool}.
+
+The \code{or} operator evaluates its left operand. If it produces the boolean
+value \code{True}, the result is \code{True}. Otherwise, it evaluates its
+right operand, and produces its result.
+
+The \code{and} operator evaluates its left operand. If it produces the boolean
+value \code{False}, the result is \code{False}. Otherwise, it evaluates its
+right operand, and produces its result.
+
+The \code{not} operator evaluates its operand. If it produces the boolean value
+\code{False}, the result is \code{True}. Otherwise, the result is \code{False}.
+
+\subsection{If Expression}
+\begin{lstlisting}
+expr: or_expr ['if' or_expr 'else' expr]
+\end{lstlisting}
+
+The first and third operands must have a common type \code{T}. The second operand
+must have type \code{bool}.
+
+The \code{if} expression evaluates its second operand. If it produces the
+boolean value \code{True}, the first operand is evaluated, and its result is
+produced. Otherwise, the third operand is evaluated, and its result is produced.
+
+\section{Builtin Functions}
+\label{sec:functions}
+
+Garter defines only one function in the global scope at the start of the program:
+
+\code{input : str()}: Reads in a line of textual input from the user, producing
+a \code{str} containing the read-in text.
+
+\code{ord : int(str)}: Returns the ordinal number for the passed-in character.
+

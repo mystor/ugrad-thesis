@@ -1,0 +1,332 @@
+% Appendix 2
+\glsresetall % reset the glossary to expand acronyms again
+\chapter{Error Glossary}\label{ch:ErrorGlossary}
+
+The error messages are an important part of Garter. Garter programs will be
+written by inexperienced programmers, and the error messages which occur when
+they write incorrect programs will have to be useful and provide a mechanism for
+correcting their errors.
+
+Sometimes, an error will be connected with 'notes', which are intended to
+provide additional information for the coder, directing them towards advice. For
+this reason, the error messages will occasionally be long, spanning multiple
+lines. To avoid scaring away developers with pages of errors, only one error
+should be shown at a time.
+
+Only validation-time errors are described here. 
+
+\section{Operator Type Mismatch}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+OperatorTypeMismatch:
+The operands to operator '+' (int + str), are invalid.
+\end{lstlisting}
+
+This error appears when a user attempts to use a unary or binary operator on two types
+which are not supported.
+
+If the operator is '+', and at least one of the operands is \code{str}, then we
+can predict that the user meant to perform string concatenation, and provide
+a fixit note.
+
+\begin{lstlisting}[breaklines]
+NOTE: Can only concatenate str and str. Consider casting the left argument
+to a str for concatenation with 'str(...)'. 
+\end{lstlisting}
+
+\section{Parameter Type Mismatch}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+ParameterTypeMismatch:
+The 3rd parameter to this function is invalid. Expected int, instead found bool.
+
+NOTE: Function expects parameters (int, int, float)
+\end{lstlisting}
+
+This error appears when a user attempts to call a function, either internal or user-defined,
+with the incorrect type parameter.
+
+The expected parameters are listed to help the user correct their logic quickly.
+
+\section{Parameter Count Mismatch}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+ParameterCountMismatch:
+This function expects 3 parameters, instead found 4 parameters.
+
+NOTE: Function expects parameters (int, int, float)
+\end{lstlisting}
+
+This error appears when a user attempts to call a function, either internal or user-defined,
+with the incorrect number of arguments.
+
+The expected parameters are listed to help the user correct their logic quickly.
+
+\section{No Such Attribute}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+NoSuchAttribute:
+This object of type 'str' has no attribute named 'jion'.
+
+NOTE: 'str' has attributes: 'join'.
+\end{lstlisting}
+
+This error appears when a user attempts to access an attribute of an object
+which is not avaliable. The list of avaliable attributes is listed to help them
+find the attribute they ment to access.
+
+\section{Attribute Already Defined}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+AttributeAlreadyDefined:
+This class has a duplicate definition of the attribute 'foo'.
+
+NOTE: The previous definition of this attribute is here:
+Line Y, Column Y
+    ....
+     ^
+\end{lstlisting}
+
+This error occurs when a user attempts to define an attribute on an object which
+has previously been defined. It identifies the location of the previous
+definition, so that the user can quickly correct the offender.
+
+
+\section{Variable Already Defined}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+VariableAlreadyDefined:
+The variable 'foo' has already been defined in this scope.
+
+NOTE: The previous definition of this variable is here:
+Line Y, Column Y
+    ....
+     ^
+\end{lstlisting}
+
+This error occurs when a user attempts to define an variable in a scope where it
+has previously been defined. It identifies the location of the previous
+definition, so that the user can quickly correct the offender.
+
+\section{Invalid Variable}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidVariable:
+The variable 'foo' may not have a valid value when it is accessed here.
+\end{lstlisting}
+
+This error occurs when a user attempts to access a variable which may not be
+valid when it is accessed. This might happen if, for example, a function is
+declared in a loop, and the function attempts to access the iterator value.
+
+\section{Incomplete Type}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+IncompleteType:
+Unable to infer the type of this value. Try annotating this declaration with the desired type.
+\end{lstlisting}
+
+This error occurs when the user attempts to assign an unwritable type to a variable or field.
+For example, the declaration \code{x := []}, for which the item type of the expression cannot be determined.
+
+If it is a simple error like \code{x := []}, \code{x := \{\}}, or \code{x := None} then we also add one of these notes:
+\begin{lstlisting}[breaklines]
+NOTE: Annotate this declaration to specify the item type of the list
+NOTE: Annotate this declaration to specify the key and value types of the dict
+NOTE: Annotate this declaration to specify the class type
+\end{lstlisting}
+
+\section{Invalid Typecast Source}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidTypecastSource:
+Cannot cast to type 'float' from type 'bool'.
+\end{lstlisting}
+
+This error occurs when a user attempts to typecast from an invalid type. It identifies
+both of the types.
+
+
+\section{Mismatched Branch Types}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+MismatchedBranchTypes:
+The types of the branches of the if expression must match.
+Instead found 'int' and 'bool'
+\end{lstlisting}
+
+This error occurs when an if expression with mismatched types on the then and
+else branches is written.
+
+\section{Not In Loop}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+NotInLoop:
+The 'break' and 'continue' statements may only be written in loops.
+\end{lstlisting}
+
+This error occurs when the user writes a \code{break} or \code{continue} statement
+outside of a loop.
+
+\section{Return Outside Function}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+ReturnOutsideFunction:
+The 'return' statement may only be written within functions.
+\end{lstlisting}
+
+This error occurs when the user writes a \code{return} statement outside of a function or method.
+
+\section{Invalid Len Argument}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidLenArgument:
+The len expression only accepts lists, dicts, and strs. Instead found a 'bool'.
+\end{lstlisting}
+
+This error occurs when an invalid argument is passed to the len magic function.
+
+\section{Invalid Return Type}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidReturnType:
+This function must return type 'bool', instead found a 'str'.
+\end{lstlisting}
+
+This error occurs when a returns statement in a function has an invalid type.
+
+If the function shouldn't return any type, the error will instead be:
+
+\begin{lstlisting}[breaklines]
+This function doesn't return a type, instead found a 'str'.
+\end{lstlisting}
+
+If the function should return a type but there is not one written
+
+\begin{lstlisting}[breaklines]
+This function must return type 'bool', instead found an argument-less return statement
+\end{lstlisting}
+
+\section{Invalid Conditional}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidConditional:
+The type of the conditional in an if or while must be 'bool'. Instead found 'int'
+\end{lstlisting}
+
+This error occurs when a non-\code{bool} value is used as the conditional in an
+\code{if} or \code{while}.
+
+\section{Mismatched List Type}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+MismatchedListType:
+The type of elements in a list must be consisitent.
+The first element in this list literal is 'bool', while the 3rd element is 'str'
+\end{lstlisting}
+
+This error occurs when a list literal is used with inconsistent item types.
+
+\section{Mismatched Dict Type}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+MismatchedDictType:
+The type of keys and values in a dict must be consisitent.
+The first key in this dict literal is 'bool', while the 3rd key is 'str'
+\end{lstlisting}
+
+This error occurs when a list literal is used with inconsistent key/value types.
+
+\section{Invalid Print Line End}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidPrintLineEnd:
+The 'end' named parameter to the print statement must be 'str', instead found 'bool'
+\end{lstlisting}
+
+This error occurs when the \code{end} named parameter to the \code{print} function is
+the incorrect type.
+
+\section{Invalid Index Type}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidIndexType:
+Only 'int' may be used to index into '[bool]'. Instead found 'float'
+\end{lstlisting}
+
+This error occurs when the incorrect type is used for indexing into \code{list},
+\code{dict} or \code{str} types with the subscription syntax.
+
+\section{Unsupported Index}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+UnsupportedIndex:
+Cannot index into type 'bool'.
+\end{lstlisting}
+
+This error occurs when the indexing form of the subscription syntax is used on a
+type which doesn't support it.
+
+\section{Unsupported Slice}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+UnsupportedSlice:
+Cannot slice into type 'bool'.
+\end{lstlisting}
+
+This error occurs when the slicing form of the subscription syntax is used on a
+type which doesn't support it.
+
+\section{Invalid Assign Target}
+\begin{lstlisting}[breaklines]
+Line X, Column X
+    ....
+     ^
+InvalidAssignTarget:
+This expression is immutable, and thus cannot be assigned to.
+\end{lstlisting}
+
+This error occurs when the user attempts to assign to an expression which isn't
+a valid assignment target.

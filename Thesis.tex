@@ -16,7 +16,7 @@
 % TITLE
 %*******************************************************************************
 
-\title{Garter: A Small to Medium Sized Snake}
+\title{Garter: A Harmless Small to Medium Sized Snake}
 
 \author{Michael Layzell}
 
@@ -37,6 +37,14 @@
 
 \prefacesection{Abstract}
 
+Languages used for teaching need to be easy to use, help new programmers find
+and correct the errors which they make in the program, and are ideally well
+equipped for developing actual software, to allow the student to explore outside
+of class with their own projects. In this work, we design and implement
+a subset with 'training wheels' of the dynamically-typed programming language
+Python \cite{pythonweb} for use in teaching, in order to create a language for
+learning which better fits those criteria.
+
 Dynamic programming languages such as the Python Programming Language can be
 powerful tools for experienced developers due to their high productivity
 potential. Unfortunately, when learning, the error messages which they produce
@@ -50,11 +58,11 @@ them to syntax and semantics which are used in the real world.
 % ACKNOWLEDGEMENTS
 %*******************************************************************************
 
-\phantomsection
-\prefacesection{Acknowledgements}
-Acknowledge some people here
+%\phantomsection
+%\prefacesection{Acknowledgements}
+%Acknowledge some people here
 
-\clearpage % keep this for proper page numbering!
+%\clearpage % keep this for proper page numbering!
 
 %*******************************************************************************
 % STATEMENT OF ORIGINALITY (required CHEM, CISC, GEOL, MATH, PHYS (Ph.D. only))
@@ -74,29 +82,33 @@ Acknowledge some people here
 % Glossary
 %*******************************************************************************
 % make sure Glossary Packages etc. are uncommented in 0_Preamble.tex
-\glosspagetrue
-\include{Glossary}
+%\glosspagetrue
+%\include{Glossary}
 
 %*******************************************************************************
 % List of Symbols
 %*******************************************************************************
 % make sure List of Symbols Packages etc. are uncommented in 0_Preamble.tex
-\symbolspagetrue
+%\symbolspagetrue
+\symbolspagefalse
 
 %*******************************************************************************
 % List of Figures
 %*******************************************************************************
-\figurespagetrue
+%\figurespagetrue
+\figurespagefalse
 
 %*******************************************************************************
 % List of Code Listings
 %*******************************************************************************
-\listingspagetrue
+%\listingspagetrue
+\listingspagefalse
 
 %*******************************************************************************
 % List of Tables
 %*******************************************************************************
-\tablespagetrue
+%\tablespagetrue
+\tablespagefalse
 
 %*******************************************************************************
 % CHAPTERS
@@ -117,8 +129,8 @@ Acknowledge some people here
 % Include chapters - kept separated to make editing easier.
 \include{1_Introduction}
 \include{2_Background}
-\include{3_Methods}
-\include{4_Results}
+\include{3_Design}
+\include{4_Prototype}
 \include{5_Conclusions}
 
 %*******************************************************************************
@@ -130,16 +142,20 @@ Acknowledge some people here
 
 \phantomsection
 \bibliographystyle{plain}
-\bibliography{references/references}
+%\bibliography{references/references}
+\bibliography{references/proposal}
 
 %*******************************************************************************
 % APPENDICES
 %*******************************************************************************
-%\updatechaptername
-%\appendixpage
-%\appendix
+\updatechaptername
+\appendix
 
-%\include{6_Appendices}
+\include{A1_Specification}
+\include{A2_Grammar}
+\include{A3_ErrorGlossary}
+\include{A4_ExamplePrograms}
+\include{A5_AltImpls}
 
 %*******************************************************************************
 % INDEX
