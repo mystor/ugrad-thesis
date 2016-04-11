@@ -2,288 +2,582 @@
 \glsresetall % reset the glossary to expand acronyms again
 \chapter{Design}\label{ch:Design}
 
-Made decision to use Python because it is popular in industry.
+For this thesis, we wanted to explore how we could create a better programming
+language for teaching new programmers. Of the requirements we identified in
+Section \ref{sec:requirements}, Existing programming languages for teaching such
+as Turing \cite{turingpaper} for the most part fulfil the requirements of being
+simple to start in, having few confusing edge cases, and restricting the types
+of programs which can be written to those which are correct and don't fail at
+runtime. Unfortunately, many of them fail when it comes to being a good stepping
+stone for students into producting programming languages which people in the
+industry use to solve real problems. It is important to reduce the barriers
+between the language which people learn in school and solving real-world
+problems, as one of the best ways to learn programming is to get engaged in
+trying to solve a problem you are facing, which is much easier when you have
+access to the libraries and resources provided to and by production programmers.
 
+To satisfy this requirement, Garter was designed as a safe subset of the Python
+programming language \cite{pythonweb}. Python is a popular programming language
+for modern development, ranking as the 5th most popular language on the GitHub
+code sharing platform in August 2015 \cite{githublangs}. The goal was to make
+the two languages so similar that it would be trivial for an eager student to
+transition their knowledge from writing Garter programs into solving real
+problems in Python using the substantial suite of libraries and tools which
+Python provides.
 
-++ Making Python Type Safe
+In this chapter the design decisions which were made in establishing the Garter
+subset of Python are described.
 
-We want to prevent writing incorrect programs
+\section{Making Python Type Safe}
 
+One of the desirable properties of a teaching programming language is that it
+prevents new developers from writing incorrect programs, and guides them away
+from making simple mistakes, especially when these problems only occur at
+runtime, and can thus be vary hard to diagnose.
+
+\begin{lstlisting}[language=Python]
 x := 5
 s := 'x = ' + x
+\end{lstlisting}
 
-And guide people away from mistakes
+The above program is written in Garter, and would produce a validation error,
+reporting an \code{OperatorTypeMismatch}, \code{The operands to operator '+'
+(str + int), are invalid.} The equivalent program in Python would not fail until
+runtime, when a \code{TypeError} would be raised. If this code was in an
+infrequently traversed code path, such as a failure path, it could remain
+undetected, meaning that the program is subtly wrong. In the development of the
+Garter prototype, I often accidentally performed this very error within the
+error handling code, and didn't catch them until I wrote the test cases for
+validation errors.
 
+In addition, we want to prevent code which, while not technically incorrect,
+is likely to cause problems in the future. For example, Python allows for
+hetrogenous arrays, consisting of values of varying types. This means it's
+possible to write code such as:
+
+\begin{lstlisting}[language=Python]
 arr := [1, 2, 3, 4, 5, 6, 7, 8, 9]
 arr.push(input('Enter a number: '))
+\end{lstlisting}
 
-Simple Type system from languages like pascal.  Fitted onto Python.
-Limits what is allowed (e.g. homogenous arrays). Good thing
+While this code is technically correct in Python, and would execute correctly as
+a Python program, future code which expects the elements in \code{arr} to
+consist only numbers would fail, as one of the elements is a string. In Garter,
+this would produce a \code{ParameterTypeMismatch} validation error, as arrays
+are required to be homogenous, which is usually what is desired, such that
+individual elements can be treated uniformly.
 
-Types like arrays and dicts are special, no concept of generic types
-Too complex and likely to make confusing errors for beginning. Unnecessary syntax which would have to be explained.
+This means that if you write code like the following in Garter, and it
+validates, you can always depend on it working, and there not being any strings
+which cause runtime failures far from the source of the problem.
 
+\begin{lstlisting}[language=Python]
+sum := 0.0
+for elt in arr:
+    sum += elt
+\end{lstlisting}
 
-++ Objects
+To fix this problem, we adapted a simple type system based languages such as
+Pascal and Turing. The type system modified to use Python's basic types, such
+as \code{int}, \code{float}, \code{bool}, \code{str}, lists (\code{[T]}), dicts
+(\code{\{K:V\}}), functions (\code{R(A, R, G...)}), and user defined classes.
+This type system limits what values are allowed to exist in the language, such
+that only the common use cases, such as homogenous arrays and dictionaries, are
+permitted. This means that new developers will be guided away from writing code
+which accidentally creates one of these non-homogenous data types or variables,
+which is usually an error, even in real Python code.
 
-Values are objects. int, float, str, bool and functions are immutable, and are passed by value.
-Other types are passed as a pointer to shared memory.
+In Garter we also decided against implementing generic or templated types. The
+dict and list types are instead given special status. This was because we
+decided that the complexities and design tradeoffs which are involved in this
+complex feature were unnecessary, especially for early learning. Instead, the
+use of the built-in types is heavily encouraged. Some programming languages
+which are used in the industry, such as the Go Programming Language also lack a
+generics system, which helped us make this decision \cite{golangweb}.
 
-arr := [1, 2, 3]
-arr2 := arr
-arr.push(4)
-print(arr2) # [1, 2, 3, 4]
+The possibility of merging the \code{int} and \code{float} types into a single
+\code{num} type was considered, however this would have confusing properties
+when it comes to array indexing, and what values are OK for using there. In
+Python, only \code{int} values can be used for indexing into an array. This
+behavior of treating the value \code{2} differently than \code{2.0} would be
+very confusing to a new programmer, so the decision was made to formalize the
+difference to avoid confusion and common programming errors, especially related
+to division of integers.
 
-int and float numeric types are kept seperate to prevent problems with array indexing
-
+\begin{lstlisting}[language=Python]
 arr[2] # OK
 arr[2.0] # Not OK
 arr[4/2] # Not OK
 arr[4//2] # OK
+\end{lstlisting}
 
-+++ Methods
+\section{Objects}
+Data in Garter are represented by Objects. 
 
-Methods are just functions as attributes on objects:
+\subsection{Value passing style}
+Object types can be split into two categories. The primitive
+types: \code{int}, \code{float}, \code{str}, \code{bool} and functions have
+immutable values, which means that they act as though they are passed by value.
 
+\begin{lstlisting}[language=Python]
+x := 5
+y := x
+x = 10
+print(y) # 5
+\end{lstlisting}
+
+In contrast, the other types, such as \code{[T]}, \code{\{K: V\}} and user defined types
+are not immutable, and act as though they are passed as a reference to a shared object.
+
+\begin{lstlisting}[language=Python]
+arr := [1, 2, 3]
+arr2 := arr
+arr.push(4)
+print(arr2) # [1, 2, 3, 4]
+\end{lstlisting}
+
+If a new copy of a list or dictionary is required, it can be copied with
+the \code{.copy()} method.
+
+\begin{lstlisting}[language=Python]
+arr := [1, 2, 3]
+arr2 := arr.copy()
+arr.push(4)
+print(arr2) # [1, 2, 3]
+\end{lstlisting}
+
+This behavior is inherited from Python, and directly mimics the behavior used in
+many programming languages, where simple types are immutable but complex ones
+are mutable and shared by reference.
+
+\subsection{Functions and Methods}
+
+Functions in Garter are implemented as objects, which can be passed around and
+have the type \code{R(A, R, G...)}, where \code{R} is the return type, and
+\code{A}, \code{R}, and \code{G} are the argument types. The following is the
+representation of the types of some functions
+
+\begin{lstlisting}[language=Python]
+def foo(): ...                         # None()
+def bar(x : int) -> int: ...           # int(int)
+def baz() -> int: ...                  # int()
+def quxx(x : int, y : int) -> int: ... # int(int, int)
+\end{lstlisting}
+
+This decision was made in order to enable teachers to teach some basic
+functional programming styles, which are becoming more popular in modern
+programming due to the popularity of web programming with languages such as
+JavaScript which often use callbacks and other functions as values.
+
+Methods are represented as immutable function attributes on objects, except with
+the an implicit \code{self} argument.
+
+\begin{lstlisting}[language=Python]
 class C:
-    def f(self): print('hi')
+    s := 'hi'
+    def f(self): print(self.s)
 x := C()
 y : None() = x.f # Valid
 y() # prints hi
+\end{lstlisting}
 
-++ Expressions
+This conforms with Python's representation of Methods, and avoids confusion
+around methods, especially when using them in more functional programming styles
+which some teachers may choose to use to teach their students.
 
-Expressions are taken from Python. Eagerly evaluated for simple reasoning.
-Type annotations unnecessary in expressions.
+\section{Expressions}
 
-+++ Literals
+Expressions are based on the expression forms from Python. Like in Python, all
+expressions are evaluated eagerly, which both conforms with the current popular
+design for production languages, and simplifies reasoning about when code is
+executed. 
 
-supports array [1, 2, 3] obejct {'a': b} numeric 5, 5.5 bool True, False and string 'foo' literals
-Requires less creation of data for lookups etc. manually with for example init functions.
+\subsection{Literals}
 
-+++ Function Calls
+Garter supports the following literals:
+\begin{itemize}
+\item list literals (e.g. \code{[1, 2, 3]})
+\item dict literals (e.g. \code{\{'a': 1, 'b': 2\}})
+\item numeric literals (e.g. \code{5}, and \code{5.5})
+\item bool literals (\code{True}, and \code{False})
+\item str literals (e.g. \code{'foo'}, and \code{"bar"})
+\end{itemize}
 
-Performed with standard f(x) syntax
-functions take fixed number of arguments, with fixed types, and produce fixed type result
+The list and dictionary literals especially enable much shorter code than
+requiring them to be built from the empty objects using mutation methods. This
+is especially the case for lookup tables etc.
+
+\subsection{Function Calls}
+
+Function calls are performed with the standard \code{f(x)} syntax. All functions in
+Garter take a fixed number of arguments of fixed types, and produce a result of
+a fixed type. Python's default arguments and named arguments were avoided in order to
+simplify writing and calling functions for new programmers.
+
+\begin{lstlisting}[language=Python]
 def f(x : int): print('hi', x)
 f(5) # prints 'hi 5'
+\end{lstlisting}
 
-Functions are values, and can be passed around
-def f(): print('hi')
-x := f
-x() # prints 'hi'
+\subsubsection{Magic Functions}
 
-++++ Magic Functions
+Garter also adapted some functions from Python which require variable count,
+variable type, or keyword arguments. These functions were special cased, and
+built-in to the language, and are present because of how important they are.
 
-Some 'function'-like expressions are magic and built in. They don't follow
-the rules of taking a fixed number of arguments with fixed types:
+The functions which act this way are:
 
-len(), conversion operators (int(), str(), float()), input()
+\begin{itemize}
+\item \code{len()} - length of the argument (\code{str}, \code{[T]}, or \code{\{K: V\}})
+\item conversion operators (\code{int()}, \code{str()}, \code{float()}) - convert the value to the written type
+\item \code{input()} - read in a line from the console, as a string. Optionally takes a prompt strin
+\end{itemize}
 
-(SEE ALSO print() magic function-like statement)
+The \code{print()} function-like statement (Section \ref{sec:print_stmt}),
+and \code{range()} function-like form (Section \ref{sec:forstmt}) are also
+examples of special-cased functions from Python in Garter.
 
-+++ Arithmetic
+\subsection{Arithmetic}
 
-Supports + - * / // \% ** (plus, minus, mult, divide, floor divide, modulus, and exponentiation)
-on numbers (int/float)
+Garter supports the standard binary operators (\code{+ - * / // \% **}, mapping
+to the operations of addition, subtraction, multiplication, division, flooring
+division, modulus, and exponentiation) on both \code{int} and \code{float}.
 
-+ is also supported on arrays and strings - represents array/string concatenation.
-+ on arrays produces an new array with a new identity, mutations on new array don't affect old and vice versa.
+In addition, the \code{+} binary operator is supported on \code{str}
+and \code{[T]}, representing string or list concatenation. It produces a new
+value with the value of the concatenation of its arguments.
 
-+ and - are also unary operands on numbers
+\code{int} and \code{float} also support the unary \code{+} and \code{-} operators,
+which do nothing and negate the value respectively.
 
-^ Fairly standard mathematical operators. Easy to learn
+This set of operators is fairly standard in programming languages, and is copied
+from Python. The decision to seperate flooring division from standard division
+(which always produces a \code{float}) is based on Python 3's behavior, and also
+helps to prevent errors for new developers which don't understand integer
+division.
 
-+++ Comparison Operations
+\subsection{Comparison Operations}
 
-== is done on value, 'asd' == 'asd' is always true
-['a', 's', 'd'] == ['a', 's', 'd'] is also true, even though have diff identities and mutable
-^ More intuitive idea of equality: has same value
+Equality with the equality operators (\code{==}, and \code{!=}) are performed by
+value, and supported by all types in Garter. As it is done on value, two lists
+or dicts with the same elements, but different identities are still equal.
 
-Exceptions: classes, and functiosn
+\begin{lstlisting}[language=Python]
+arr1 := [1, 2, 3]
+arr2 := [1, 2, 3]
+print(arr1 == arr2) # True
 
+dict1 := {'a': 1, 'b': 2}
+dict2 := {'a': 1, 'b': 2}
+print(dict1 == dict2) # True
+\end{lstlisting}
+
+This decision was made as it makes the most intuitive sense. However, there are
+exceptions to the comparison-is-by-value rule. Namely, user-defined classes and
+functions are compared by reference. 
+
+\begin{lstlisting}[language=Python]
 class Foo:
     x := 5
 a := Foo()
 b := Foo()
-a == b # False
+print(a == b) # False
 
 def a(): print('hi')
 def b(): print('hi')
-a == b # False
+print(a == b) # False
+\end{lstlisting}
 
-+++ Attributes + Subscription
+The other comparison operators, \code{<}, \code{>}, \code{<=}, and \code{>=}
+are supported on the \code{str}, \code{int}, and \code{float} types.
 
-Can access attributes of classes defined. Done with . operator
+Unlike some other programming languages, comparison operations in Garter are not
+binary, but rather n-ary. This means that the operation \code{a < b < c} is not
+evaluated as either \code{(a < b) < c} or \code{a < (b < c)}. Instead, it is
+evaluated as \code{(a < b) and (b < c)}. This is much closer to the mathematical
+meaning of that statement as a constraint, and can help prevent issues when
+people with mathematical backgrounds try to write constraints which occur in
+other languages. This is important as it helps new programmers which may already
+be familiar with mathematical notation to adapt more quickly.
 
+Multiple operators can be mixed together in these comparisons, meaning that
+the expression \code{a < b == c < d} is legal in Garter.
+
+\subsection{Attributes and Subscription}
+
+Objects often have attributes, which can be accessed using the \code{.} operator.
+This is used to access properties such as methods on built-in and user-defined
+types, as well as accessing and potentially modifying attributes on user-defined
+types.
+
+\begin{lstlisting}[language=Python]
 class Foo:
     x := 5
 a := Foo()
 a.x = 10
 print('a.x =', a.x)
+\end{lstlisting}
 
-Also can subscript into arrays/dicts
+When accessing values in arrays and dictionaries, subscripting syntax is used.
+This involves placing the indexing value in square brackets after the value.
+\code{int} is the type used for indexing into \code{[T]}, while \code{K} is the
+type used for indexing into \code{\{K: V\}}. Lists in Garter are 0-indexed,
+which is the most common indexing strategy in use today, as well as the strategy
+used in Python.
 
+\begin{lstlisting}[language=Python]
 x := {'a': 5}
 y := [5, 10]
 
 x['a'] # 5
-y[0] # 5 <- 0 indexing is standard in programming languages today
+y[0] # 5
+\end{lstlisting}
 
-++ Statements
+Lists may also be sliced into over a range, using the slicing syntax
+(\code{[S:E]}). Both the values \code{S} and \code{E} are indexes, and can be
+omitted, defaulting to the start and end of the array respectively.
 
-+++ Functions
+Slices can be assigned to with another array. This will update the values in the
+slice to be equivalent to the values from the new array, potentially shifting
+around values in the original array.
 
-defined with def. Can be annotated with types.
+For more details on this syntax, see \ref{sec:spec_subscription}.
 
-Type annotation syntax defined in Python in RFC #ref. Used by other project mypy
-Re-used in Garter, as it fits well into Python.
+\section{Statements}
 
+\subsection{Functions}
+Functions in Garter are defined with the \code{def} keyword. Their syntax is taken
+directly from Python, including the type annotation syntax. The Type annotation
+syntax is based off of PEP 3107 -- Function Annotations \cite{pythonfuncannot}.
+We re-used this syntax as it was already part of the Python language, and thus
+was guaranteed not to conflict with other important features, and avoids
+adding new syntax as much as possible, even though it is extremely infrequently
+used in Python projects.
+
+\begin{lstlisting}[language=Python]
 def foo(x : int, y : str) -> bool:
     ...
+\end{lstlisting}
 
-functions are defined as objects
-have their own scope where variables are defined. can refer to enclosing variable scope
-but cannot assign to it without `global` or `nonlocal` (for nested functions) statement.
+Function bodies have a seperate scope, and can be nested. They can reference
+variables from their enclosing scope, however, they cannot assign to those
+variables without declaring the intention with the \code{global} or
+\code{nonlocal} declarations (See \ref{sec:funcdef}).
 
-Can leave function early with return statement. Return statement is required for function
-with result to provide the result, on all code paths.
+This helps new developers avoid errors, by requiring them to clarify their
+intentions as to whether they want to create a local variable, or mutate an
+outer variable, before they use assignment statements.
 
-Function declarations are immutable.
+The \code{return} statement exits a function early, and can be passed a value
+when the function is defined to produce a result. The \code{return} statement is
+required for functions which provide a result on all code paths.
 
-+++ Control Flow
+The variable bindings created by function declarations are immutable, and cannot
+be re-assigned to.
 
-for loops go over lists, or ranges, rather than having manual increments
-Simpler, frequently what you were trying to do
+\subsection{Control Flow Statements}
 
-for x in range(10): # x is 0, 1, 2, 3, 4, 5, 6, 7, 8, 9. Declares x only in scope
+\code{for} loops in Garter loop over lists or ranges of numbers. While this is more
+restrictive than a traditional range statement, it tends to be more in line with
+the standard use of the \code{for} loop. (See \ref{sec:forstmt})
+
+\begin{lstlisting}[language=Python]
+for x in range(10):
+    # x is 0, 1, 2, 3, 4, 5, 6, 7, 8, 9. Declares x only in scope
     ...
 
-for x in [1, 2, 3]: # x is 1, 2, 3. Declares x only in scope
+for x in [1, 2, 3]:
+    # x is 1, 2, 3. Declares x only in scope
     ...
+\end{lstlisting}
 
-while loop vary basic loop - loops while condition is true
+Garter also supports the \code{while} loop, which is a basic loop. Every
+iteration, including the first iteration, its condition is tested. If it
+is \code{False}, then the loop aborts, otherwise it continues
+(See \ref{sec:whilestmt}).
 
-break and continue statements can be placed within loop. Aborts the innermost loop
 
-if statement will check condition. If True, do first branch, else continue onto other branches.
-Standard construct, poerful and simple to understand. Used everywhere
+The \code{break} and \code{continue} statements can be placed within both
+the \code{for} and \code{while} looping construct bodies. \code{break} aborts
+the innermost loop, continuing at the next statement after the
+loop. \code{continue} causes the next item in the \code{for} loop to be iterated
+through, and re-triggers the check in a \code{while} loop.
 
-+++ Assignments
-Assignments to values are done with x = 5
-Cannot assign to a variable which has not been declared.
+Garter also supports the \code{if} statement. This statement, like in other
+languages, tests a boolean condition. If it is \code{True}, one branch is taken,
+otherwise the other branch is taken.
 
-Variables are declared with x := 5 or x : int = 5. They are scoped to their function. Cannot shadow a binding from within the same function.
+\subsection{Assignments}
 
+In Garter, unlike Python, you cannot assign to a variable which has not been
+declared. Assignments are performed with the \code{x = 5} statement. 
+
+Variable declarations are performed with the \code{x := 5} or \code{x : int = 5}
+statement. these declarations are lexically scoped, but are not permitted
+to shadow other bindings with the same name from the same function.
+
+\begin{lstlisting}[language=Python]
 def foo():
     if cond:
         x := 5
     else:
         x := 10
-    return x # not OK - x is defined within the if's branches, not at the root
+    return x # not OK
+    # x is defined within the if's branches, not at the root
+\end{lstlisting}
 
+\begin{lstlisting}[language=Python]
 def foo():
     x := 0
     if cond:
         x = 5
     else:
         x = 10
-    return x # OK - x defined in same scope as return, only assigned to in if statements
+    return x # OK
+    # x defined in same scope as return, only assigned to in if statements
+\end{lstlisting}
 
+\begin{lstlisting}[language=Python]
 def foo():
     x := 0
     if cond:
-        x := 5 # Oops! This is an error, and catches a problem caused by probably unintentional shadowing
+        x := 5 # Not OK
+        # This is an error, and catches a problem
+        # caused by probably unintentional shadowing
+\end{lstlisting}
 
+\begin{lstlisting}[language=Python]
 x := 0
 def foo():
-    x := 10 # allowed, as x is in a different function. Doesn't change x
+    x := 10 # OK
+    # x is in a different function. Doesn't change global x
+\end{lstlisting}
 
+\begin{lstlisting}[language=Python]
 x := 0
 def foo():
     global x # global statement is required to change x
     x = 10
+\end{lstlisting}
 
-A function defined inside another function can see variables
-defined in the root of the enclosing function, thanks to closures.
+Garter also supports closures, allowing functions to access variables defined
+in the root of an enclosing function or in the root of the program.
 
+\begin{lstlisting}[language=Python]
 def foo() -> int():
     x := 5
     def bar() -> int:
         return x
     return bar
 foo()() # 5
+\end{lstlisting}
 
-Nested functions are nice for teaching basic functional style programming which is becoming more popular
+Nested functions are nice for teaching basic functional style programming which
+is becoming more popular due to the prevaliance of callback programming with
+closures in languages like JavaScript.
 
-Accessing non root values is not OK
+Accessing values which aren't in the root of a function, such as the loop
+iterator value from a \code{for} loop, is not allowed. This is because the value
+may not be valid by the time the function is actually called.
 
+\begin{lstlisting}[language=Python]
 def foo(a : [int]) -> [int()]:
     out : [int()] = []
     for x in a:
         def bar() -> int:
-            return x # NOT OK - x is not bound in root of function and thus cannot be seen from enclused function
-            # the value x may not have the same value as you are expecting by the time the function is done
-            # (only 1 x value is used, so if this was allowed, all functions would return the last value)
+            return x # Not OK
+            # x is not bound in root of function and thus cannot
+            # be seen from enclused function the value x may not
+            # have the same value as you are expecting by the time
+            # the function is done. The same variable is used
+            # for all iterations of the loop, so if this was allowed
+            # all functions would return the last value itertated
+            # through
         out.push(bar)
     return out
+\end{lstlisting}
 
-With := statement, type is inferred.
+The declaration syntax (\code{x := a}) is the only syntax addition to Python.
+It adds no new semantic meaning to Python, having the same meaning in Python
+as a bare assignment statement. The meaning is only useful for the Garter
+validation pass.
 
-This is only syntax addition to python. Declarations have same semantics at runtime as assignment in python. Only meaning is for Garter.
+\subsection{Classes}
 
-+++ Classes
+Users in Garter are allowed to define their own types, with the \code{class}
+construct.
 
-Classes are custom types. Defined with
-
+\begin{lstlisting}[language=Python]
 class C:
     field := initialvalue
 
     def method(self):
         # self is implicitly avaliable here as the instance of C!
+\end{lstlisting}
 
-Created by calling the name of the class:
+When a class is defined, it also declares a function with the name of the class.
+This function, when called, will create a new instance of that class.
 
+\begin{lstlisting}[language=Python]
 x := C()
+\end{lstlisting}
 
-C itself is a function and a type name.
+One of the unfortunate design decisions made in Garter because of its Python
+legacy is the semantics of field default values. The initial values for fields
+are evaluated just once when the class is defined. This can lead to confusing
+results when combined with list or dictionary fields, and mutation.
 
-Methods and fields are accessed with the . operator
-
-Initial values for fields are evaluated once as the class is defined. Can lead occasionally
-to confusing results:
-
+\begin{lstlisting}[language=Python]
 class C:
     arr := []
 x := C()
-x.arr.push(5) #!!! Changing the value of arr for all instances of C() which haven't changed their value of arr!
+x.arr.push(5) # Changes value for default value for arr
 y := C()
 y.arr # Contains 5
+\end{lstlisting}
 
-This is because of the behavior of python. In python normal way to do this would be:
+In Python, the normal way to implement this type of logic would be to define the
+magic \code{\_\_init\_\_} method on the class, which is called when a new
+instance is created. This would mean that the \code{[]} literal would be
+evaluated each time that an instance is created.
 
+\begin{lstlisting}[language=Python]
 class C:
     def __init__(self):
         self.arr = []
+\end{lstlisting}
 
-This violates requirements to not have weird kooky syntax for classes. Seriously considered making
-the declaration syntax in classes instead act like __init__ as it is already new syntax. However
-the language right now doens't do that.
+This syntax is highly unfortunate, requiring an understanding of constructors
+etc. Instead, the syntax of creating type-associated values was chosen, as it
+has reasonable semantics, although it sometimes creates undesirable results
+when used with mutable values.
 
-+++ Expressions
+There was a consideration early in the development of considering consecutive
+\code{:=} statements in classes as being an implicit \code{\_\_init\_\_}
+statement. This was chosen to be too different semantically from Python, and
+was not chosen as the option.
 
-Expressions can also just be written as a statement, and they will be evaluated for their side effects.
+\subsection{Expressions}
 
-++ Programs
+Expressions can also just be written as a statement, and they will be evaluated
+for their side effects.
 
-A program is just a series of statements. They are executed from top to bottom. It is also possible to interact with a REPL, which evaluates the statements one at a time as they are received.
+\section{Programs}
 
-Functions don't have their bodies typechecked until either:
-a) their binding's name is referenced (for example, to be called), or
-b) The end of the current program's input is reached.
+A program is just a series of statements. They are executed from top to bottom.
+Garter also supports interactive evaluation, in which partial programs are
+provided to the validator. Garter programs are validated in a single pass from
+top to bottom. Most statements are validate in order. Functions don't have their
+bodies typechecked until either:
+
+\begin{enumerate}
+\item their binding's name is referenced (for example, to be called), or
+\item The end of the current program's input is reached.
+\end{enumerate}
 
 This allows mutual recursion, for example:
 
+\begin{lstlisting}[language=Python]
 def foo(b: bool):
     if b:
         print('b is true')
@@ -297,249 +591,16 @@ def bar():
     foo(True)
 
 foo(False)
+\end{lstlisting}
 
-++ Modules
+\section{Modules}
 
-Only support for including basic modules provided by language like random, and turtle
-Eventual plans to expand to allow user or teacher defined modules (SEE Future work)
-Additional screen module provided for Python to enable basic interaction with terminal windows
-Would be nice to have simple graphics API for teaching students. Outside the scope of this thesis (SEE future work).
-(Hence why copied screen from Turing - existing language for teaching students)
+Garter only supports a small set of basic modules provided by the base language.
+The currently supported modules are \code{random} and \code{turtle}. Expansion
+to include support for user- and teacher- defined modules are part of future
+work \ref{sec:FutureWork}.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%The primary goal of the Garter programming language was to provide an
-%introductory language for teaching programming. To achieve that goal, we had a
-%few requirements:
-%
-%\begin{enumerate}
-%\item The programmer should not be required to use syntax until they understand
-%its meaning, yet should be able to start writing code before they have been
-%taught about syntax.
-%\item The language should not require interaction with language features which
-%would not normally be taught at an early level to perform basic tasks.
-%\item The language should act as a stepping stone to a production programming
-%language, such that eager learners can use what they have learned in class to
-%write more complex programs and springboard into learning a language which is
-%used by professionals in both Scientific Programming and Application Programming.
-%\item Confusing edge cases should be eliminated, such that students and teachers
-%are able to safely reason about a program without having to spend time studying
-%the language's particulars.
-%\item The language should prevent incorrect programs from being written, and
-%provide useful explanations as to how to correct the program being run, rather
-%than breaking in a confusing manner at runtime.
-%\end{enumerate}
-%
-%\section{Selecting a Base Language}
-%
-%Requirement 3 meant that we wanted to use an existing programming language as the
-%basis for Garter, and then modify it such that it could also satisfy the other
-%requirements. By doing that, we would ensure that the language had many of the
-%same properties as the production language, and that the developer would be able
-%to easily translate the knowledge they had accrued from Garter over to the new
-%programming language.
-%
-%For this purpose, we selected the Python Programming Language as the base language
-%\cite{pythonweb}. Python is used within both application programming, especially
-%for web development with libraries such as Django \cite{djangoweb}, and
-%scientific programmming with powerful high performance math libraries like
-%matplotlib and scipy \cite{matplotlibweb} \cite{scipyweb}. This means that
-%python has the tools to enable eager programmers to achieve whatever goals they
-%have once they leave the safety of Garter.
-%
-%Python also performs fairly well on requirement 1, with a few exceptions, especially
-%related to Python's object model. These design flaws were avoided in
-%Section \ref{sec:classes}.
-%
-%\section{Types}
-%
-%Python is a dynamic language, which means that minimal analysis of the
-%correctness of your program is checked before running the program. Instead,
-%incorrect programs fail at runtime through a raised exception, often in a piece
-%of code distant from where the actual problem occurred, such as in library code.
-%In order to fix this problem, the decision was made to fit Garter with a type
-%system to help validate the correctness of programs written in it. 
-%
-%It was important to select a type system which fit the requirements of a
-%learning programming language. One of python's advantages is its dynamic type
-%system. Because Python is dynamically typed, functions are extremely generic,
-%and only require their parameters to have the methods and properties which are
-%actually accessed in the execution of the function. Unfortunately, this can lead
-%to hard-to-find problems due to how the constraints are only checked at runtime.
-%
-%Type systems are largely split into two groups: structural and nominal type systems.
-%While a structural type system where the type of a value is defined by its properties
-%is closer to python's original reasoning about types, the decision was made to use
-%a nominal type system for Garter.
-%
-%The first reason for selecting to use a nominal type system, where types are
-%identified by a name, rather than their properties, is that it can help produce
-%better error messages. As a name is avaliable whenever a type is being referred
-%to, it is easy to point at what the problem is, for example, by saying
-%``Expected an int, instead found a str'' instead of ``Expected a type supporting
-%the `/' (division) operation''.
-%
-%The other reason is related to requirement 3. Of the top 10 languages on the
-%popular open source code hosting website GitHub as of August 19,
-%2015 \cite{githublangs}, 4 are dynamically typed (JavaScript, Ruby, PHP, and
-%Python), 4 are nominally typed (Java, C++, C#, and C), and 2 are not
-%general-purpose programming languages (CSS and HTML).
-%
-%For that reason, we felt that a structural type system was ill-suited to
-%introducing people to programming and programming languages.
-%
-%The decision was also made that we didn't want a highly extensible type system.
-%Garter is not intended to be a language to write extensible and re-usable
-%libraries in. For that reason, no implementation of generic templated types, or
-%functions was implemented, instead Python's built-in list and dictionary types
-%were given special status and syntax within Garter, namely \code{[T]} for list
-%types, \code{\{K: V\}} for dictionary types, and \code{R(Args, ...)} for function
-%types.
-%
-%The decision to keep the \code{float} and \code{int} types seperate was made due
-%to arrays. In Python, it is legal to perform any operation which you could perform
-%on a \code{float} with an \code{int}, however the reverse is not true. Namely,
-%indexing into an array with a \code{float}, even if it has an integral value,
-%is illegal and will cause a runtime exception. As we are trying to avoid runtime
-%exceptions, the decision was made to keep the types distinct, but allow for
-%implicit $\code{int} \rarrow \code{float}$ conversions.
-%
-%\section{Syntax}
-%
-%In accordance with the requirement to provide an easy transition from Garter to
-%Python, we wanted to avoid syntax extensions above the base Python syntax as
-%much as possible. Instead, we hoped that by restricting the set of legal Python
-%programs we could create a new language which shared the same syntax, and could
-%simply be extended back to standard python.
-%
-%Python 3, thanks to PEP 3107, already has support for function annotation
-%syntax \cite{pythonfuncannot}. We decided to use this syntax as the syntax
-%for Garter function type annotations.
-%
-%However, we did need to add an additional syntax. In python, there is no declaration
-%statement, instead, the first assignment to a variable within a function declares
-%that variable within the function's scope. So the code:
-%
-%\begin{lstlisting}[language=Python]
-%x = 'bar'
-%def f():
-%    x = 'foo'
-%f()
-%print(x)
-%\end{lstlisting}
-%
-%will print the value \code{'bar'} instead of \code{'foo'}. Instead, in order to
-%mutate the global \code{x} value, the statement \code{global x} would have to be
-%written in the function \code{f}.
-%
-%We wanted to catch this type of error in Garter, which means that we wanted to
-%seperate the concepts of assigning to a variable and declaring a variable. To
-%do this, we introduced additional syntax: \code{x := y} and \code{x : type = y}.
-%These expressions have the same runtime semantic meaning as a python assignment
-%statement, however they have different meaning to the semantic analysis phase.
-%
-%In Garter, an assignment can only occur on a variable which has been previously
-%declared within the same function, either through \code{:=} or \code{global}.
-%This way, attempts to mutate an outer scope without the use of \code{global} are
-%caught before execution time.
-%
-%It also has the benifit of greatly reducing the need for dependence on type inference.
-%The \code{:=} statement declares a variable, using type inference to determine its
-%type. Unfortunately, there are some times when the type of the right hand side
-%of the declaration cannot be determined, for example \code{x := []}. It is known that
-%\code{x} is a list, but a list of what? In a situation like that, the other syntax:
-%\code{x : type = y} can be used to clarify which particular type should be used
-%for \code{x}.
-%
-%This problem could also be solved by a more powerful type inference system, such
-%as the hindley-damas-milner type inference scheme \cite{hm-types-damas}.
-%However, such compexity is likely unnecessary for a basic program, and could
-%cause confusion when a change in code in one location causes type errors to
-%appear at another distinct place in the code due to type inference changing.
-%
-%No other syntactic additions were made to the language, however Garter's set
-%of legal syntax was greatly reduced from the syntax allowed by Python. Garter's
-%complete syntax can be found in the appendix.
-%
-%\section{Functions}
-%
-%Functions in Garter are defined in the same way that they are defined in Python,
-%with the \code{def} statement. We decided to make function bindings created this
-%way immutable, such that programmers can't accidentally define multiple
-%functions with the same name. Like in Python, we decided to make functions
-%objects which can be passed around and assigned to variables. This should enable
-%for teachers to introduce some functional aspects to their introductory
-%programming courses while using the Garter programming language, without greatly
-%increasing the complexity of the language. The fact that a function is an object
-%is one which programmers who are not told are unlikely to come across.
-%
-%Due to the ability for functions to be passed around as objects, the decision was
-%also made to allow functions to be defined within other functions. These functions
-%are able to access the enclosing function scope of the function they are called in,
-%but not the lexical scopes, as those may have values which are no longer valid.
-%
-%\section{Scopes}
-%
-%Python has an interesting set of rules for how variables are scoped, due to its
-%dynamic nature. Basically, everything in python is scoped at the function level,
-%and every variable defined in the function is visible everywhere else in the
-%function. That means that code like the following is totally fine:
-%
-%\begin{lstlisting}[language=Python]
-%def foo():
-%    if x:
-%        y = 10
-%
-%    if x:
-%        return y
-%    return 30
-%\end{lstlisting}
-%
-%This is because the presence of an assignment to a variable named \code{y} in the
-%function caused the variable \code{y} to be considered function-local. If \code{y}
-%was accessed before it had been given a variable, an runtime exception would be
-%raised.
-%
-%Instead, in Garter, the decision was made to make variable scoping lexical. Thus
-%whatever lexical scope the declaration (\code{:=}) statement was written in, the
-%variable would only be visible in enclosed scopes.
-%
-%In garter, the decision was made to use lexical scoping, while adding additional
-%rules. Namely, it is not possible to shadow a local variable with a new declaration
-%in Garter, as in Python the shadowed variable would actually be clobbered by the
-%assignment statement.
-%
-%More details on the scoping rules in Garter can be found in the specification
-%(Section \ref{sec:defs_and_scoping}).
-%
-%\section{REPL Friendliness}
-%
-%One of the big advantages of a system like Python is its friendliness to
-%Read-Eval-Print-Loops (REPLs). Decisions about how scoping and variable
-%declarations work in Garter were made in order to make the language more
-%friendly to REPLs. For example, in a REPL, you may want to re-define a function
-%you previously defined in order to see how the code will act with the new
-%function definition. In Python, that is always allowed, because there is no type
-%safety, while in Garter, the decision was made to only allow re-declaration in a
-%REPL context, when the type of the new function is identical to the type of the
-%previous one (so as to not break previously written logic).
-%
-%This allows for easier experimentation with REPLs in a strongly typed language,
-%while making the system more approachable.
-
+Another important part of teaching would be to provide a simple graphics API
+for teaching students, such that they can create simple games, and visualize
+progress. Designing such an API is, however, outside the scope of this thesis.
 

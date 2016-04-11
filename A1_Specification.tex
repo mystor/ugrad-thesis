@@ -288,7 +288,7 @@ immutable:
 map, removing the key from the mapping, and returns the associated value.
 Otherwise, returns the second parameter.
 
-\code{setdefault : V(K, V)}: If the first parmaeter is a key in the map, returns
+\code{setdefault : V(K, V)}: If the first parameter is a key in the map, returns
 its associated value. Otherwise, mutates the map, inserting tke key-value pair
 of the parameters to the map, and returns the second parameter.
 
@@ -455,7 +455,7 @@ def foo(a: int, b: float, c: str) -> bool:
     ....
 \end{lstlisting}
 
-Would define ani immutable variable of type \code{bool(int, float, str)}.
+Would define an immutable variable of type \code{bool(int, float, str)}.
 
 When the function is invoked, the statements in the body of the function are executed
 sequentially.
@@ -634,6 +634,7 @@ statement is not passed an expression, then the function must not have a return
 type.
 
 \subsubsection{Print Statement}
+\label{sec:print_stmt}
 
 \begin{lstlisting}
 print_stmt: ('print' '(' expr (',' expr)*
@@ -669,6 +670,7 @@ to \code{False}, then the suite of the else clause, if present, is executed.
 All of the expression arguments must be of type \code{bool}.
 
 \subsubsection{While Statement}
+\label{sec:whilestmt}
 \begin{lstlisting}
 while_stmt: 'while' expr ':' suite
 \end{lstlisting}
@@ -685,6 +687,7 @@ goes back to testing the expression.
 
 
 \subsubsection{For Statement}
+\label{sec:forstmt}
 \begin{lstlisting}
 for_stmt: ('for' NAME 'in' (expr | range) ':' suite)
 range: 'range' '(' expr [',' expr [',' expr]] [','] ')'
@@ -852,6 +855,7 @@ This is also used to call methods, as methods are defined as immutable fields
 with a function object type.
 
 \subsubsection{Subscription}
+\label{sec:spec_subscription}
 \begin{lstlisting}
 subscription: primary '[' (expr | [expr] ':' [expr]) ']'
 \end{lstlisting}
@@ -1033,7 +1037,7 @@ The \code{if} expression evaluates its second operand. If it produces the
 boolean value \code{True}, the first operand is evaluated, and its result is
 produced. Otherwise, the third operand is evaluated, and its result is produced.
 
-\section{Builtin Functions}
+\section{Built-in Functions}
 \label{sec:functions}
 
 Garter defines only one function in the global scope at the start of the program:

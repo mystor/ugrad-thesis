@@ -58,6 +58,7 @@ occurred.
 
 % Problem Overview
 \section{Problem Overview}
+\label{sec:requirements}
 
 The goal of this thesis was to design, implement, and demonstrate a new teaching
 programming language: Garter. Garter is intended to be a language which both
@@ -67,19 +68,23 @@ solving real problems. We consider such a language to have to fit the following
 requirements:
 
 \begin{enumerate}
-\item The programmer should not be required to use syntax or language features
-until they understand its meaning, yet should be able to start writing code
-before they have been taught about syntax.
-\item The language should act as a stepping stone to a production programming
-language, such that eager learners can use what they have learned in class to
-write more complex programs and springboard into learning a language which is
-used by professionals in both Scientific Programming and Application Programming.
-\item Confusing edge cases should be eliminated, such that students and teachers
-are able to safely reason about a program without having to spend time studying
-the language's particulars.
-\item The language should prevent incorrect programs from being written, and
-provide useful explanations as to how to correct the program being run, rather
-than breaking in a confusing manner at runtime.
+\item Minimal Boilerplate: The programmer should not have to write code which
+they to not yet understand simply in order to get the code which they do
+understand to work.
+\item Stepping Stone to Production: The language should act as a stepping stone
+to a production programming language, such that eager learners can use what they
+have learned in class to write more complex programs and springboard into
+learning a language which is used by professionals in both Scientific
+Programming and Application Programming.
+\item Minimal Technical Trivia: When teachers use the language to teach, they
+should feel like they are teaching programming, rather than teaching a language.
+Strange edge cases and specific technical trivia about how features were
+designed or implemented should be eliminated.
+\item Prevent Incorrect Programs: It's very easy in dynamic languages to write
+incorrect programs which fail at runtime with confusing error messages, often
+lacking important context. Programs should instead fail as fast as possible with
+useful error messages which guide the programmer toward writing the correct
+program.
 \end{enumerate}
 
 % Thesis Contributions

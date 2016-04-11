@@ -2,39 +2,79 @@
 \glsresetall % reset the glossary to expand acronyms again
 \chapter{Prototype Implementation}\label{ch:Prototype}
 
-In order to validate the claims of simplicity and feasibility, a prototype implementation of the Garter language was devised.
+In order to validate the claims of simplicity and feasibility, a prototype
+implementation of the Garter language was devised, and some example
+programs were written in Garter.
 
-Many options were considered for how to implement this prototype, mostly focusing on compiling the resulting program back down to Python logic, while performing the validation.
-See appendix (Alternative Implementation Strategies)
+The prototype was built by modifying the cpython compiler \cite{cpython} and
+tooling to support the extra functionality provided by Garter, and then adding a
+validation pass using the extra functionality to ensure correctness of the
+Garter code.
 
-++ Program Structure
+Many options were considered for how to implement this prototype, mostly
+focusing on Garter's similarity to Python, parsing and validating the program,
+and then generating finished Python logic. See
+Appendix \ref{ch:ExamplePrograms}.
 
-Inserted a phase
-cpython (lexer) -> cpython (parser) -> garter (validator) -> cpython (compiler) -> cpython (interpereter) (DIAGRAM)
+\section{Program Structure}
 
-The strategy which was selected was to modify the cpython interpereter, adding the extra syntax required by the Garter programming language to Python's AST (see language design # assignment for info on extra syntax).
-Validation pass was written. Takes python's pre-compilation AST and typechecks it. Written in python for ease of development (over C)
+\includegraphics[width=\textwidth]{figs/proto_design.pdf}
+% cpython (lexer) -> cpython (parser) -> garter (validator) -> cpython (compiler) -> cpython (interpereter) (DIAGRAM)
 
-New compiler entry point for python programs, like the built in compile function provided by Python itself. Has same functionality, but also performs typechecking
+The Garter prototype implementation consisted of two major changes. Firstly, the
+cpython parser and AST was extended to support the \code{:=} and \code{: T =}
+declaration syntax. This was handled by adding an optional property on the
+Assignment statement which indicates whether it is a declaration, and what type
+was written. Types in the AST are represented as expressions, for backwards
+compatibility with Python's PEP 3107 -- Function
+Annotations \cite{pythonfuncannot}. The parser was then modified to accept the
+extra syntax, and represent it correctly in the AST. The lexer, compiler, and
+interpereter were left unmodified, such that Python code, some of which is
+essential to the operation of cpython's logic, would continue to function
+correctly.
 
-Modify programs such as IDLE (the Python IDE) to instead use this compile function rather than the built-in one. Means that code run in IDLE is now valid Garter code.
+A validation pass was then written. This pass operates on the AST objects
+created by the parser, and performs the validation passes, type checking, and
+other restrictions which Garter enforces on code written in it compared to
+Python. This pass was written as a Python function in the \code{garter} module.
+For ease of integration with existing tools in the Python ecosystem, the entry
+point was given the same signature as Python's built-in \code{compile} function.
+It acts like \code{compile}, except performs the validation first.
 
-Also created command line REPL which uses this entry point - acts like the Python executable.
+The entry points for interacting with Python were then also modified. The IDLE
+IDE provided by Python was modified such that code compilation was dispatched
+through Garter's \code{gcompile} function, rather than through the default
+compile framework, meaning that typechecking functions correctly. In addition,
+the Python \code{code} module was updated to also dispatch through \code{gcompile},
+meaning that a command-line garter interpereter is also avaliable through the
+command \code{./python -m gcode}. This program acts similarially to the default
+Python executable. It is, however, not the default action right now in order to
+not break the build process. The relatively minor amount of extra work to make
+this the default code path is an important step.
 
-+++ Why not replace python completely
+The decision to insert the extra validation phase only when explicitly compiling
+garter code, rather than simply modifying the default \code{compile} infrastructure,
+was made in order to not break the rest of Python. cpython depends on large amounts
+of Python code internally, which would be broken by the Garter validation passes.
+Instead, just the major entry points for new developers were changed over, with
+normal Python code still being run internally.
 
-Cannot completely replace the standard compile pathways with Garter ones - python code is used internally in python and would need to be re-written.
+\section{REPL Support}
 
-++ REPL Support
+One of the useful properties of Python for teaching is it's support for a
+Read-Eval-Print-Loop (REPL). REPLs help new programmers learn how their language
+will behave by getting immediate responses for the behavior of program
+fragments, and enabling experimentation. Some modifications had to be made to
+the REPL environments, such as the one found in IDLE, in order to support the
+validation phase needed by Garter. First, REPLs require maintaining scope and
+type information across compilations. This was achieved by providing callers of
+the \code{gcompile} API access to an opaque scope object which contains this
+information. The callers had to be modified to retain this information across
+calls to the \code{gcompile} API.
 
-REPLs require maintaining scope and type information across compilations. This is done by exposing
-an opaque scope object to calling code of compile function. Can be passed to compile function on
-a future pass to make the logic run in the same scope as previous scope.
-
-+++ Modifications to REPL mode
-
-Modifications needed to be made to the repl runners such as IDLE in order to ensure that if runtime error killed statement when it is being executed: changes to types in scope are not recorded.
-
-Otherwise, garter validator might think that x has been initialized, when it actually has not yet.
-
+In addition, the callers had to be modified to roll-back the changes made to the
+scope object if a runtime error occured during the execution of a program
+fragment, as a runtime error could cause new declarations to not be initialized.
+This required slightly more extensive changes to the call sites, however it was
+not too complex to re-purpose the existing infrastructure for this purpose.
 

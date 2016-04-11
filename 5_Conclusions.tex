@@ -17,11 +17,19 @@ timeframe in which it was designed and implemented. We hope to shore up these
 problems in a future version of Garter.
 
 \begin{enumerate}
+\item Better distribution story
+
+Garter's prototype implementation is not yet easy to distribute to students.
+Work must be done to make an implementation as easy to install as a Python
+implementation, such that Garter can be used by students without having to
+build it from source.
+
 \item Garter lacks a module system.
 
 Garter piggybacks on python, but doesn't currently support module loading,
-outside of a small pre-defined set of libraries, due to the complexity of
-figuring out
+outside of a small pre-defined set of libraries. A module system to allow
+code modularization could be extremely useful for teachers and students,
+especially when dealing with larger projects.
 
 \item Garter lacks a mechanism for exposing Python libraries to Garter code
 
@@ -35,12 +43,19 @@ mechanism for doing this should be integrated into the language proper.
 \item Garter lacks a class inheritance structure
 
 To enter and participate in modern programming, you often need to learn the
-mechanics of OOP, specifically single-inheritance with interfaces. No mechanism
-was implemented for doing this in Garter (See \ref{sec:Classes}), which means
-that teaching of OOP concepts will have to occur in a different language.
-A future Garter may perform the design effort to add support for inheritance.
+mechanics of Object-Oriented Programming, specifically single-inheritance with
+interfaces. No mechanism was implemented for doing this in Garter
+(See \ref{sec:classdef}), which means that teaching of OOP concepts will have to
+occur in a different language. A future Garter may perform the design effort to
+add support for inheritance.
 
-% TODO: REference?
+\item Learning Resources
+
+Garter currently lacks the learning resources avaliable for languages such as
+Python and Turing. These languages have existed for longer, and thus have many
+more textbooks etc. written using their syntax and idioms. As Garter is close to
+both Python and Turing in language design, textbooks for these languages could
+probably be simplified into good Garter teaching material.
 
 \end{enumerate}
 
